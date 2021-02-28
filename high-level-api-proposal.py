@@ -20,7 +20,7 @@ class Spectroscopy(object)
         # Call __init__ after downloading data?
 
     def list_molecues(self, local_path=None, **kwargs):
-        """Provides
+        """Provides information about each molecule in the local database
 
         Args:
             local_path: Local directory where databases are stored
@@ -38,7 +38,8 @@ class Spectroscopy(object)
 
     def compute_absorption(self, molecules, atmosphere, grid,
                            local_path=None, provide_components=False, **kwargs):
-        """Provides
+        """Computes absorption coefficient (inverse meters per molecule) at specified
+           wavenumbers given temperture, pressure, and gas concentrations 
 
         Args:
             molecules: one or more strings describing chemical formula (i.e. "H2O").
