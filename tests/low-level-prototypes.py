@@ -10,7 +10,7 @@ from PyLBL import collision_induced_absorption, continua, cross_sections, models
 
 def main():
     #Set up some test atmospheric points.
-    grid = arange(1., 3250., 0.01)
+    grid = arange(1., 3250., 0.1)
     pressure = asarray([117., 1032., 11419., 98388.])  # [Pa].
     temperature = asarray([269.01, 227.74, 203.37, 288.99])  # [K].
     volume_mixing_ratio = {
