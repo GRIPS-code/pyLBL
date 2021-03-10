@@ -1,7 +1,7 @@
 from os.path import isfile
 from sqlite3 import OperationalError
 
-from numpy import zeros
+from numpy import log, zeros
 
 from pyrad.lbl.continua import OzoneContinuum, WaterVaporForeignContinuum, \
                                WaterVaporSelfContinuum
@@ -10,6 +10,87 @@ from pyrad.lbl.hitran.collision_induced_absorption import HitranCIA
 from pyrad.lbl.hitran.cross_sections import HitranCrossSection
 from pyrad.lbl.tips import TotalPartitionFunction
 from pyrad.optics.gas import Gas as Lines
+
+
+air_molar_mass = 0.0289647  # Molar mass of air [kg mol-1].
+Na = 6.02214076e23  # Avogadro's number [mol-1].
+kb = 1.38064852e-23  # Boltzmann constant [J K-1].
+g = 9.80  # Acceleration due to gravity [m s-2].
+
+
+class Absorption(object):
+    """Container for absorption coefficients.
+
+    Attributes:
+        cia: Dictionary of arrays of absorption coefficients [m-1] from collision-induced
+             absorption tables.
+        continua: Array of absorption coefficients [m-1] from continua.
+        cross_section: Array of absorption coefficients [m-1] from cross section tables.
+        lines: Array of absorption coefficients [m-1] from spectral lines.
+    """
+    def __init__(self, lines, cross_section, cia, continua):
+        """Initializes object.
+
+        Args:
+            lines: Array of absorption coefficients [m-1] from spectral lines.
+            cross_section: Array of absorption coefficients [m-1] from cross section tables.
+            cia: Dictionary of arrays of absorption coefficients [m-1] from collision-induced
+                 absorption tables.
+            continua: Array of absorption coefficients [m-1] from continua.
+        """
+        self.lines = lines
+        self.cross_section = cross_section
+        self.cia = cia
+        self.continua = continua
+
+    @property
+    def total(self):
+        """Adds the absorption coefficient components together.
+
+        Returns:
+            Array of total absorption coefficients [m-1].
+        """
+        cia = zeros(self.lines.size)
+        for data in self.cia.values():
+            cia += data
+        return self.lines + self.cross_section + self.continua + cia
+
+
+class Atmosphere(object):
+    """Atmosphere object.
+
+    Attributes:
+        temperature: Array of temperatures [K].
+        pressure: Array of pressures [Pa].
+        volume_mixing_ratio: Dictionary where the keys are the molecule formulae and the
+                             values are arrays of volume-mixing ratios [mol mol-1].
+    """
+    def __init__(self, temperature, pressure, volume_mixing_ratio, z=None):
+        """Initializes object.
+
+        Args:
+            temperature: Array of temperatures [K].
+            pressure: Array of pressures [Pa].
+            volume_mixing_ratio: Dictionary where the keys are the molecule formulae and the
+                                 values are arrays of volume-mixing ratios [mol mol-1].
+        """
+        self.temperature = temperature
+        self.pressure = pressure
+        if z is None:
+            # Calculate distance between points assuming the atmosphere is 1D using the
+            # hydrostatic approximaxtion and ideal gas law.
+            self.z = zeros(temperature.size)
+            for i in range(1, self.z.size):
+               self.z[i] = self.z[i-1] + hydrostatic_distance(pressure[i-1:i+1],
+                                                              temperature[i])
+        else:
+            self.z = z
+        self.volume_mixing_ratio = volume_mixing_ratio
+
+    def points(self):
+        for i in range(self.temperature.size):
+            yield self.temperature[i], self.pressure[i], \
+                  {x: y[i] for x, y in self.volume_mixing_ratio.items()}
 
 
 class Gas(object):
@@ -63,27 +144,29 @@ class Gas(object):
             grid: Array of wavenumbers [cm-1].
 
         Returns:
-            Array of absorption coefficients [m-1].
+            Absorption object.
         """
-        k = zeros(grid.size)
-        k += self.lines.absorption_coefficient(temperature, pressure,
-                                               volume_mixing_ratio[self.molecule], grid)
+        vmr = volume_mixing_ratio[self.molecule]
+        n = number_density(pressure, temperature, vmr)
+        k_lines = self.lines.absorption_coefficient(temperature, pressure, vmr, grid)*n
         try:
-            k += self.cross_section.absorption_coefficient(temperature, pressure, grid)
+            k_cross_section = self.cross_section.absorption_coefficient(temperature, pressure,
+                                                                        grid)*n
         except AttributeError:
-            pass
-        self.cia = {}
+            k_cross_section = zeros(grid.size)
+        k_cia = {x: zeros(grid.size) for x in self.cia.keys()}
         for broadener, cia in self.cia.items():
-            k += cia.absorption_coefficient(temperature, grid) * \
-                 number_density(pressure, temperature, volume_mixing_ratio[broadener])
+            k_cia[broadener] += cia.absorption_coefficient(temperature, grid)*n * \
+                                number_density(pressure, temperature,
+                                volume_mixing_ratio[broadener])
+        k_continua = zeros(grid.size)
         for continuum in self.continua:
             try:
-                k += continuum.absorption_coefficient(temperature, pressure,
-                                                      volume_mixing_ratio[self.molecule],
-                                                      grid)
+                k_continua += continuum.absorption_coefficient(temperature, pressure,
+                                                               vmr, grid)*n
             except TypeError:
-                k += continuum.absorption_coefficient(grid)
-        return k*number_density(pressure, temperature, volume_mixing_ratio[self.molecule])
+                k_continua += continuum.absorption_coefficient(grid)*n
+        return Absorption(k_lines, k_cross_section, k_cia, k_continua)
 
 
 class Spectroscopy(object):
@@ -133,41 +216,45 @@ class Spectroscopy(object):
         """Provides information about each molecule in the local database.
 
         Returns:
-            Dictionary with one entry per gas available in the database
-            The value for each gas is a dict with possible (Boolean) keys has_self_continuum, has_foregn_continiuum,
-            and collision_induced_absorption (the values are the gas_id(s) of the broadening gas(es))
-
-            I.e.: {"ch4":{},
-                   "h2o":{"self_continuum":True,"foregn_continiuum":True},
-                   "o2":{"collision_induced_absorption":["o2", "n2"]}
-                   }
+            Dictionary where the key is name of each gas available in the database
+            and the value is a dictionary describing the different objects capable
+            of calculating absorption coefficients.
         """
         return {name: gas.__dict__ for name, gas in self.gas.items()}
 
     def compute_absorption(self, atmosphere, grid):
-        """Computes absorption coefficient (inverse meters per molecule) at specified
-           wavenumbers given temperture, pressure, and gas concentrations 
+        """Computes absorption coefficient [m-1] at specified wavenumbers given temperture,
+           pressure, and gas concentrations 
 
         Args:
-            molecules: one or more strings describing chemical formula (i.e. "H2O").
-            atmosphere: an object describing temperatures, pressures, and gas concentrations
-              One option is an xarray Dataset where the names and/or attributes of the DataArrays specify which variables
-              to use, units, etc.
+            atmosphere: an Atmosphere object.
             grid: Wavenumber grid array [cm-1].
-            isotopologues: Lists of Isotopologue objects.
-            local_path: Local directory where databases are to be stored
-
 
         Returns:
-            xarray Datasets with absorption coefficient (inverse meters per molecule) for each values of molecule
-            on the spectral grid and all other coordinates in the atmosphere objects
-            If provide_components we break out the components of absorption: more coordinates? Dicts?
+            An array of absorption coefficients.
         """
         k = {x: zeros((atmosphere.pressure.size, grid.size)) for x in self.gas.keys()}
         for name, gas in self.gas.items():
             for i, (temperature, pressure, vmr) in enumerate(atmosphere.points()): 
-                k[name][i, :] = gas.absorption_coefficient(temperature, pressure, vmr, grid)
+                k[name][i, :] = gas.absorption_coefficient(temperature, pressure, vmr,
+                                                           grid).total
         return k
+
+
+def hydrostatic_distance(pressure, temperature, molar_mass=air_molar_mass):
+    """Calculates the distance between two pressures assuming hydrostatic equilibrium
+       and constant temperature, using the ideal gas law.
+
+    Args:
+        pressure: 2-element array of pressures [Pa].
+        temperature: Temperature [K].
+        molar_mass: Molar mass [kg mol-1].
+
+    Returns:
+        Distance [m] between the two atmospheric pressures.
+    """
+    return (Na*kb*temperature/(molar_mass*g))*log(pressure[1]/pressure[0])
+
 
 def number_density(pressure, temperature, volume_mixing_ratio):
     """Calculates the nubmer density using the ideal gas law.
@@ -180,35 +267,4 @@ def number_density(pressure, temperature, volume_mixing_ratio):
     Returns:
         Number density [m-3].
     """
-    kb = 1.38064852e-23  # Boltzmann constant [J K-1].
     return pressure*volume_mixing_ratio/(kb*temperature)
-
-
-if __name__ == "__main__":
-    from os.path import join
-
-    from netCDF4 import Dataset
-    from numpy import arange
-
-    from circ import Atmosphere, Circ
-
-    grid = arange(1., 3250., 1.)
-    molecules = ["CH4", "CO", "CO2", "H2O", "N2", "N2O", "O2", "O3"]
-    spectroscopy = Spectroscopy(molecules, "test.db")
-    spectroscopy.load_spectral_inputs()
-    print(spectroscopy.list_molecules())
-    circ_data = Circ("circ-case1.nc")
-    atmos = Atmosphere(circ_data.temperature, circ_data.pressure, circ_data.vmr)
-    absorption_coefficient = spectroscopy.compute_absorption(atmos, grid)
-    with Dataset("results.nc", "w") as dataset:
-        for name, units, data in zip(["pressure", "wavenumber"], ["Pa", "cm-1"],
-                                     [atmos.pressure, grid]):
-            dataset.createDimension(name, data.size)
-            v = dataset.createVariable(name, "f8", (name,))
-            v.setncattr("units", units)
-            v[:] = data[:]
-        for name, data in absorption_coefficient.items():
-            v = dataset.createVariable("{}_absorption_coefficient".format(name), "f8",
-                                       ("pressure", "wavenumber"))
-            v.setncattr("units", "m-1")
-            v[...] = data[...]
