@@ -7,22 +7,10 @@ from numpy import arange, asarray
 from PyLBL import collision_induced_absorption, continua, cross_sections, models, \
                   molecular_lines
 
+from default_atmosphere import grid, pressure, temperature, volume_mixing_ratio
+
 
 def main():
-    #Set up some test atmospheric points.
-    grid = arange(1., 3250., 0.1)
-    pressure = asarray([117., 1032., 11419., 98388.])  # [Pa].
-    temperature = asarray([269.01, 227.74, 203.37, 288.99])  # [K].
-    volume_mixing_ratio = {
-        "H2O": asarray([5.244536e-06, 4.763972e-06, 3.039952e-06, 6.637074e-03]),
-        "CO2": asarray([0.00036, 0.00036, 0.00036, 0.00035999]),
-        "O3": asarray([2.936688e-06, 7.415223e-06, 2.609510e-07, 6.859128e-08]),
-        "N2O": asarray([1.050928e-08, 1.319584e-07, 2.895416e-07, 3.199949e-07]),
-        "CH4": asarray([2.947482e-07, 8.817705e-07, 1.588336e-06, 1.700002e-06]),
-        "CO": asarray([3.621464e-08, 1.761450e-08, 3.315927e-08, 1.482969e-07]),
-        "O2": asarray([0.209, 0.209, 0.2090003, 0.208996])
-    }
-
     timings = {}
     with Dataset("PyLBL-output.nc", "w") as dataset:
         for data, name, units in zip([pressure, grid], ["pressure", "wavenumber"],
