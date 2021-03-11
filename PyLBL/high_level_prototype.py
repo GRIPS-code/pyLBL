@@ -257,7 +257,7 @@ def hydrostatic_distance(pressure, temperature, molar_mass=air_molar_mass):
 
 
 def number_density(pressure, temperature, volume_mixing_ratio):
-    """Calculates the nubmer density using the ideal gas law.
+    """Calculates the number density using the ideal gas law.
 
     Args:
         pressure: Pressure [Pa].
