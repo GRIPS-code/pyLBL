@@ -1,12 +1,10 @@
 from glob import glob
 from logging import getLogger
-from os.path import join
 
-from netCDF4 import Dataset
-from numpy import arange, asarray, zeros
-from xarray import DataArray, open_dataset
+from numpy import arange
+from xarray import Dataset, open_dataset
 
-from PyLBL import Atmosphere, Spectroscopy
+from PyLBL import Spectroscopy
 
 
 info = getLogger(__name__).info
@@ -30,30 +28,23 @@ class Cmip6(object):
         """
         molecules = {"H2O": "hus", "CH4": "ch4", "CO": "co", "CO2": "co2", "N2O": "n2o",
                      "N2": "n2", "O2": "o2", "O3": "o3"}
+        data = {}
         with open_dataset(path) as dataset:
-            self.temperature = dataset["ta"].data[0,:,0,0]
-            self.pressure = dataset["p"].data[0,:,0,0]
-            self.vmr = {}
+            data["temperature"] = dataset["ta"]
+            data["pressure"] = dataset["p"]
             for name, var in molecules.items():
-                self.vmr[name] = dataset.variables[var].data[0,:,0,0]
+                data["vmr_{}".format(name)] = dataset.variables[var]
+        self.dataset = Dataset(data)
+
+    @property
+    def molecules(self):
+        return [x.split("_")[-1] for x in self.dataset.data_vars.keys()
+                if x.startswith("vmr_")]
 
 if __name__ == "__main__":
-    cmip = Cmip6("ta.nc")
+    cmip = Cmip6("tests/ta.nc")
     grid = arange(1., 3250., 1.)
-    spectroscopy = Spectroscopy(cmip.vmr.keys(), "test.db")
+    spectroscopy = Spectroscopy(cmip.molecules, "test.db")
     spectroscopy.load_spectral_inputs()
-    print(spectroscopy.list_molecules())
-    atmos = Atmosphere(cmip.temperature, cmip.pressure, cmip.vmr)
-    absorption_coefficient = spectroscopy.compute_absorption(atmos, grid)
-    with Dataset("results.nc", "w") as dataset:
-        for name, units, data in zip(["pressure", "wavenumber"], ["Pa", "cm-1"],
-                                     [atmos.pressure, grid]):
-            dataset.createDimension(name, data.size)
-            v = dataset.createVariable(name, "f8", (name,))
-            v.setncattr("units", units)
-            v[:] = data[:]
-        for name, data in absorption_coefficient.items():
-            v = dataset.createVariable("{}_absorption_coefficient".format(name), "f8",
-                                       ("pressure", "wavenumber"))
-            v.setncattr("units", "m-1")
-            v[...] = data[...]
+    absorption_coefficient = spectroscopy.compute_absorption(cmip.dataset, grid)
+    absorption_coefficient.to_netcdf("results.nc")

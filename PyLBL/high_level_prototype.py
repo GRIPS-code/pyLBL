@@ -162,21 +162,20 @@ class Spectroscopy(object):
         Returns:
             An array of absorption coefficients.
         """
-        p = atmosphere["pressure"]
-        coords = {key: value for key, value in p.coords.items()}
-        coords["mechanism"] = ["lines", "cross_section", "cia", "continua"]
-        coords["wavenumber"] = grid
-        dims = list(p.dims) + ["mechanism", "wavenumber"]
-        sizes = tuple([len(coords[x]) for x in dims])
-        beta = {"{}_absorption".format(name): DataArray(zeros(sizes), coords=coords, dims=dims)
+        t = atmosphere["temperature"]
+        dims = list(t.dims) + ["mechanism", "wavenumber"]
+        sizes = tuple([x for x in t.sizes.values()] + [4, grid.size])
+        beta = {"{}_absorption".format(name): DataArray(zeros(sizes), dims=dims)
                 for name in self.gas.keys()}
         for name, gas in self.gas.items():
-            for i in range(atmosphere["pressure"].data.size):
+            for i in range(t.data.size):
                 vmr = {x: atmosphere["vmr_{}".format(x)].data.flat[i]
                        for x in self.gas.keys()}
-                k = gas.absorption_coefficient(atmosphere["temperature"].data.flat[i],
-                                               p.data.flat[i], vmr, grid)
-                i = unravel_index(i, p.data.shape)
+                print(vmr)
+                k = gas.absorption_coefficient(t.data.flat[i],
+                                               atmosphere["pressure"].data.flat[i],
+                                               vmr, grid)
+                i = unravel_index(i, t.data.shape)
                 for j, (source, data) in enumerate(k.items()):
                     indices = tuple(list(i) + [j, slice(None)])
                     print(indices)
