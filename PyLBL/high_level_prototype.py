@@ -13,10 +13,7 @@ from pyrad.lbl.tips import TotalPartitionFunction
 from pyrad.optics.gas import Gas as Lines
 
 
-air_molar_mass = 0.0289647  # Molar mass of air [kg mol-1].
-Na = 6.02214076e23  # Avogadro's number [mol-1].
 kb = 1.38064852e-23  # Boltzmann constant [J K-1].
-g = 9.80  # Acceleration due to gravity [m s-2].
 
 
 class Gas(object):
@@ -25,8 +22,9 @@ class Gas(object):
     Attributes:
         cia: Dictionary where the key is the string chemical formula of the broadener
              and the value is a HitranCIA object.
-        continua: List of continuum objects (WaterVaporForeignContinuum and
-                  WaterVaporSelfContinuum objects for H2O, OzoneContinuum for O3).
+        continua: Dictionary where the key is the continuum type and the value is a
+                  continuum object (WaterVaporForeignContinuum and WaterVaporSelfContinuum
+                  objects for H2O, OzoneContinuum for O3).
         cross_section: HitranCrossSection object.
         lines: HitranLines object
         molecule: String chemical formula.
@@ -160,7 +158,7 @@ class Spectroscopy(object):
             grid: Wavenumber grid array [cm-1].
 
         Returns:
-            An array of absorption coefficients.
+            An xarray Dataset of absorption coefficients.
         """
         t = atmosphere["temperature"]
         dims = list(t.dims) + ["mechanism", "wavenumber"]
@@ -171,14 +169,12 @@ class Spectroscopy(object):
             for i in range(t.data.size):
                 vmr = {x: atmosphere["vmr_{}".format(x)].data.flat[i]
                        for x in self.gas.keys()}
-                print(vmr)
                 k = gas.absorption_coefficient(t.data.flat[i],
                                                atmosphere["pressure"].data.flat[i],
                                                vmr, grid)
                 i = unravel_index(i, t.data.shape)
                 for j, (source, data) in enumerate(k.items()):
                     indices = tuple(list(i) + [j, slice(None)])
-                    print(indices)
                     if source == "cia":
                         bsum = zeros(grid.size)
                         for values in data.values():
