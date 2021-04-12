@@ -1,5 +1,13 @@
 # pyLBL
 
+## Installation
+Make sure that you have the most recent version of `pip`, then run
+the following command in the base directory of the repository:
+
+```python
+pip install .
+```
+
 ## High-level API
 The calculation of absorption coefficients requires a `Spectroscopy` object.  If a
 `database` parameter is provided upon initialization, the object will create a local
@@ -10,7 +18,9 @@ below.  After intialization, the specral parameters can be loaded into memory by
 the `load_spectral_inputs` method.
 
 ```python
-spectroscopy = Spectoscopy(["H2O", "CO2"], database="local_database.sqlite")
+from pyLBL import Spectroscopy
+
+spectroscopy = Spectroscopy(["H2O", "CO2"], database="local_database.sqlite")
 spectroscopy.load_spectral_inputs()
 spectroscopy.list_molecules()
 ```
