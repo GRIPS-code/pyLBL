@@ -1,12 +1,28 @@
 # pyLBL
 
+## High-level API
+The calculation of absorption coefficients requires a `Spectroscopy` object.  If a
+`database` parameter is provided upon initialization, the object will create a local
+SQLite3 database containing the data necessary to calculate the absorption for the
+list of input molecules if a file by that name does not exist.  If the file does exist,
+the object will assume that file is a SQLite3 database that conforms to the schema detailed
+below.  After intialization, the specral parameters can be loaded into memory by calling
+the `load_spectral_inputs` method.
+
+```python
+spectroscopy = Spectoscopy(["H2O", "CO2"], database="local_database.sqlite")
+spectroscopy.load_spectral_inputs()
+spectroscopy.list_molecules()
+```
+
+
 ### Spectral database schema
 Spectral data is downloaded from the web and stored as tables in a local SQLite3 database.
 The data for each component of the absorption is stored as follows:
 
 
 #### HITRAN line parameter tables
-Line parameters for each molecule are taken from [https://hitran.org](HITRAN) and stored in
+Line parameters for each molecule are taken from [HITRAN](https://hitran.org) and stored in
 tables with columns:
 | CH4_lines       |
 |-----------------|
@@ -36,7 +52,7 @@ and stored in tables with columns:
 
 
 #### Absorption cross sections
-Absorption cross-sections for each molecule are taken from [https://hitran.org](HITRAN)
+Absorption cross-sections for each molecule are taken from [HITRAN](https://hitran.org)
 and stored in a set of related tables with columns:
 
 | N2O_cross_section_band_parameters |
@@ -66,7 +82,7 @@ and stored in a set of related tables with columns:
 
 
 #### Collision-induced Absorption.
-Collision-induced absorption parameters are also taken from [https://hitran.org](HITRAN)
+Collision-induced absorption parameters are also taken from [HITRAN](https://hitran.org)
 and stored a in a set of related tables with columns:
 
 | CO2_CH4_cia_band_parameters |
