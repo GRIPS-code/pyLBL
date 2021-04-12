@@ -16,6 +16,7 @@ setup(
         "Operating System :: OS Independent",
     ],
     install_requires=[
+        "xarray",
         "pyarts",
         "pyrad @ git+http://github.com/menzel-gfdl/pylbl@add-continua",
         "pygrt @ git+http://github.com/menzel-gfdl/pygrt@main",
