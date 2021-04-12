@@ -2,7 +2,7 @@ from time import time
 
 from netCDF4 import Dataset
 
-from PyLBL import Atmosphere, Spectroscopy
+from pyLBL import Atmosphere, Spectroscopy
 
 from default_atmosphere import grid, pressure, temperature, volume_mixing_ratio
 

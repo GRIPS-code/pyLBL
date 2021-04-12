@@ -4,7 +4,7 @@ from time import time
 from netCDF4 import Dataset
 from numpy import arange, asarray
 
-from PyLBL import collision_induced_absorption, continua, cross_sections, models, \
+from pyLBL import collision_induced_absorption, continua, cross_sections, models, \
                   molecular_lines
 
 from default_atmosphere import grid, pressure, temperature, volume_mixing_ratio
@@ -12,7 +12,7 @@ from default_atmosphere import grid, pressure, temperature, volume_mixing_ratio
 
 def main():
     timings = {}
-    with Dataset("PyLBL-output.nc", "w") as dataset:
+    with Dataset("pyLBL-output.nc", "w") as dataset:
         for data, name, units in zip([pressure, grid], ["pressure", "wavenumber"],
                                      ["Pa", "cm-1"]):
             dataset.createDimension(name, data.size)

@@ -2,10 +2,10 @@ from setuptools import find_packages, setup
 
 
 setup(
-    name="PyLBL",
+    name="pyLBL",
     version="0.0.0",
     author="R. Menzel, R. Pincus",
-    author_email="author@example.com",
+    author_email="",
     description="Line-by-line absorption calculators.",
     url="",
     python_requires=">=3.5",
@@ -21,7 +21,7 @@ setup(
         "pygrt @ git+http://github.com/menzel-gfdl/pygrt@main",
     ],
     entry_points={
-        "arts": ["Gas=PyLBL.pyarts_frontend:PyArtsGas",],
+        "arts": ["Gas=pyLBL.pyarts_frontend:PyArtsGas",],
         "grtcode" : ["Gas=pygrt.gas_optics:Gas",],
         "pyrad" : ["Gas=pyrad.optics.gas:Gas",
                    "CrossSection=pyrad.lbl.hitran.cross_sections:HitranCrossSection",
