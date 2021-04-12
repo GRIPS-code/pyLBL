@@ -4,7 +4,7 @@ from logging import getLogger
 from numpy import arange
 from xarray import Dataset, open_dataset
 
-from PyLBL import Spectroscopy
+from pyLBL import Spectroscopy
 
 
 info = getLogger(__name__).info

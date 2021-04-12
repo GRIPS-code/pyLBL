@@ -11,7 +11,7 @@ from uuid import uuid4
 from numpy import arange, zeros
 from xarray import DataArray, Dataset, open_dataset
 
-from PyLBL import Spectroscopy
+from pyLBL import Spectroscopy
 
 
 info = getLogger(__name__).info

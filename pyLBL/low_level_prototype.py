@@ -2,7 +2,7 @@ from pkg_resources import get_entry_map, load_entry_point, Requirement
 from re import match
 
 
-plugins = get_entry_map("PyLBL")
+plugins = get_entry_map("pyLBL")
 models = plugins.keys()
 molecular_lines = {key: value["Gas"].load() for key, value in plugins.items()}
 
