@@ -193,7 +193,7 @@ class CollisionInducedAbsorptionAbstractBaseClass(object):
             kwargs: Extra optional arguments to configure specific models.
 
         Returns:
-            Array of absorption coefficients [m4] on input wavenumber grid.
+            Array of absorption coefficients [m5] on input wavenumber grid.
         """
         raise NotImplementedError("you must override this.")
 
@@ -219,7 +219,7 @@ class HitranCIA(CollisionInducedAbsorptionAbstractBaseClass):
             grid: Spectral grid array [cm-1].
 
         Returns:
-            Array of absorption coefficients [m4] on input wavenumber grid.
+            Array of absorption coefficients [m5] on input wavenumber grid.
         """
         pass
 
