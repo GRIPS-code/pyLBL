@@ -1,193 +1,14 @@
-from os.path import isfile
-from sqlite3 import OperationalError
-
-from numpy import log, unravel_index, zeros
 from xarray import DataArray, Dataset
 
-from pyrad.lbl.continua import OzoneContinuum, WaterVaporForeignContinuum, \
-                               WaterVaporSelfContinuum
-from pyrad.lbl.hitran import Hitran, Voigt
-from pyrad.lbl.hitran.collision_induced_absorption import HitranCIA
-from pyrad.lbl.hitran.cross_sections import HitranCrossSection
-from pyrad.lbl.tips import TotalPartitionFunction
-from pyrad.optics.gas import Gas as Lines
+from hapi2 import Molecule
+from numpy import unravel_index, zeros
+
+from .atmosphere import Atmosphere
+from .low_level_prototype import continua, molecular_lines
+from .spectral_database import Hapi
 
 
 kb = 1.38064852e-23  # Boltzmann constant [J K-1].
-
-
-class Gas(object):
-    """Gas, capable of calculating its absorption coefficient spectrum.
-
-    Attributes:
-        cia: Dictionary where the key is the string chemical formula of the broadener
-             and the value is a HitranCIA object.
-        continua: Dictionary where the key is the continuum type and the value is a
-                  continuum object (WaterVaporForeignContinuum and WaterVaporSelfContinuum
-                  objects for H2O, OzoneContinuum for O3).
-        cross_section: HitranCrossSection object.
-        lines: HitranLines object
-        molecule: String chemical formula.
-    """
-    def __init__(self, molecule, broadeners, database):
-        """Initializes object, by reading data from the input database.
-
-        Args:
-            molecule: String chemical formula.
-            broadeners: List of string chemical formulae.
-            database: Path to database.
-        """
-        self.molecule = molecule
-        try:
-            self.lines = Lines(molecule, hitran_database=database, tips_database=database)
-        except OperationalError:
-            pass
-        try:
-            self.cross_section = HitranCrossSection(molecule, database=database)
-        except OperationalError:
-            pass
-        self.cia = {}
-        for broadener in broadeners:
-            try:
-                self.cia[broadener] = HitranCIA(molecule, broadener, database=database)
-            except OperationalError:
-                continue
-        self.continua = {}
-        if molecule == "H2O":
-            self.continua["foregin"] = WaterVaporForeignContinuum(database=database)
-            self.continua["self"] = WaterVaporSelfContinuum(database=database)
-        elif molecule == "O3":
-            self.continua["all"] = OzoneContinuum(database=database)
-
-    def absorption_coefficient(self, temperature, pressure, volume_mixing_ratio, grid):
-        """Calculates absorption coefficients.
-
-        Args:
-            temperature: Temperature [K].
-            pressure: Pressure [Pa].
-            volume_mixing_ratio: Dictionary where the keys are string molecular formulae
-                                 and the values are volume-mixing ratios [mol mol-1].
-            grid: Array of wavenumbers [cm-1].
-
-        Returns:
-            Dictionary of absorption coefficients.
-        """
-        vmr = volume_mixing_ratio[self.molecule]
-        n = number_density(pressure, temperature, vmr)
-        k = {}
-        k["lines"] = self.lines.absorption_coefficient(temperature, pressure, vmr, grid)*n
-        try:
-            k["cross section"] = self.cross_section.absorption_coefficient(temperature, pressure,
-                                                                           grid)*n
-        except AttributeError:
-            k["cross section"] = zeros(grid.size)
-        k["cia"] = {x: zeros(grid.size) for x in self.cia.keys()}
-        for broadener, cia in self.cia.items():
-            k["cia"][broadener] += cia.absorption_coefficient(temperature, grid)*n * \
-                                   number_density(pressure, temperature,
-                                                  volume_mixing_ratio[broadener])
-        k["continua"] = {x: zeros(grid.size) for x in self.continua.keys()}
-        for mechanism, continuum in self.continua.items():
-            try:
-                k["continua"][mechanism] += continuum.absorption_coefficient(temperature, pressure,
-                                                                             vmr, grid)*n
-            except TypeError:
-                k["continua"][mechanism] += continuum.absorption_coefficient(grid)*n
-        return k
-
-
-class Spectroscopy(object):
-    """Line-by-line gas optics."""
-    def __init__(self, molecules, database=None):
-        """Initializes object.  Reads databases to discover what information is available.
-
-        Args:
-            local_path: Local directory where database is stored.
-        """
-        self.database = database
-        self.molecules = molecules
-        if database is not None and not isfile(self.database):
-            self.create_database(molecules, database)
-
-    @staticmethod
-    def create_database(molecules, database):
-        for molecule in molecules:
-            Hitran(molecule, Voigt()).create_database(database)
-            TotalPartitionFunction(molecule).create_database(database)
-            try:
-                HitranCrossSection(molecule).create_database(database)
-            except ValueError:
-                pass
-            for broadener in molecules:
-                try:
-                    HitranCIA(molecule, broadener).create_database(database)
-                except ValueError:
-                    continue
-            if molecule == "H2O":
-                for continuum in [WaterVaporForeignContinuum, WaterVaporSelfContinuum]:
-                    continuum().create_database(database)
-            elif molecule == "O3":
-                OzoneContinuum().create_database(database)
-
-    def load_spectral_inputs(self, wavenumber_lims=None, isotopologues=None):
-        """Load spectral data into memory.
-
-        Args:
-            wavenumber_lims: Tuple (lower, upper) defining the spectral range [cm-1] for the
-                             calculation.  Not used yet.
-            isotopologues: Not used yet.
-        """
-        self.gas = {x: Gas(x, self.molecules, self.database) for x in self.molecules}
-
-    def list_molecules(self):
-        """Provides information about each molecule in the local database.
-
-        Returns:
-            Dictionary where the key is name of each gas available in the database
-            and the value is a dictionary describing the different objects capable
-            of calculating absorption coefficients.
-        """
-        return {name: gas.__dict__ for name, gas in self.gas.items()}
-
-    def compute_absorption(self, atmosphere, grid):
-        """Computes absorption coefficient [m-1] at specified wavenumbers given temperture,
-           pressure, and gas concentrations 
-
-        Args:
-            atmosphere: an xarray Dataset.
-            grid: Wavenumber grid array [cm-1].
-
-        Returns:
-            An xarray Dataset of absorption coefficients.
-        """
-        t = atmosphere["temperature"]
-        dims = list(t.dims) + ["mechanism", "wavenumber"]
-        sizes = tuple([x for x in t.sizes.values()] + [4, grid.size])
-        beta = {"{}_absorption".format(name): DataArray(zeros(sizes), dims=dims)
-                for name in self.gas.keys()}
-        for name, gas in self.gas.items():
-            for i in range(t.data.size):
-                vmr = {x: atmosphere["vmr_{}".format(x)].data.flat[i]
-                       for x in self.gas.keys()}
-                k = gas.absorption_coefficient(t.data.flat[i],
-                                               atmosphere["pressure"].data.flat[i],
-                                               vmr, grid)
-                i = unravel_index(i, t.data.shape)
-                for j, (source, data) in enumerate(k.items()):
-                    indices = tuple(list(i) + [j, slice(None)])
-                    if source == "cia":
-                        bsum = zeros(grid.size)
-                        for values in data.values():
-                            bsum += values[:]
-                        beta["{}_absorption".format(name)].values[indices] = bsum[:]
-                    elif source == "continua":
-                        bsum = zeros(grid.size)
-                        for values in data.values():
-                            bsum += values[:]
-                        beta["{}_absorption".format(name)].values[indices] = bsum[:]
-                    else:
-                        beta["{}_absorption".format(name)].values[indices] = data[:]
-        return Dataset(beta)
 
 
 def number_density(pressure, temperature, volume_mixing_ratio):
@@ -202,3 +23,91 @@ def number_density(pressure, temperature, volume_mixing_ratio):
         Number density [m-3].
     """
     return pressure*volume_mixing_ratio/(kb*temperature)
+
+
+class Spectroscopy(object):
+    """Line-by-line gas optics."""
+    def __init__(self, lines_backend="grtcode", continua_backend="mt_ckd"):
+        """Initializes object.  Reads databases to discover what information is available.
+
+        Args:
+            local_path: Local directory where database is stored.
+        """
+        self.lines_database = Hapi()
+        self.lines_engine = molecular_lines[lines_backend]
+        self.continua_engine = continua[continua_backend]
+
+#   def load_spectral_inputs(self, atmosphere, spectral_grid):
+#       """Load spectral data into memory.
+
+#       Args:
+#           wavenumber_lims: Tuple (lower, upper) defining the spectral range [cm-1] for the
+#                            calculation.  Not used yet.
+#           isotopologues: Not used yet.
+#       """
+#       for gas in Atmosphere(atmosphere).keys():
+#           self.lines_database.load_line_parameters(gas, spectral_grid[0], spectral_grid[-1])
+
+    def list_molecules(self):
+        """Provides information about each molecule in the local database.
+
+        Returns:
+            Dictionary where the key is name of each gas available in the database
+            and the value is a dictionary describing the different objects capable
+            of calculating absorption coefficients.
+        """
+        return [str(x) for x in self.lines_database.molecules]
+
+    def compute_absorption(self, atmosphere, grid):
+        """Computes absorption coefficient [m-1] at specified wavenumbers given temperture,
+           pressure, and gas concentrations 
+
+        Args:
+            atmosphere: an xarray Dataset.
+            grid: Wavenumber grid array [cm-1].
+
+        Returns:
+            An xarray Dataset of absorption coefficients [m-1].
+        """
+        atm = Atmosphere(atmosphere)
+        p = atm.pressure
+        t = atm.temperature
+        dims = list(t.dims) + ["mechanism", "wavenumber"]
+        sizes = tuple([x for x in t.sizes.values()] + [2, grid.size])
+        beta = {"wavenumber": DataArray(grid, dims=("wavenumber",), attrs={"units": "cm-1"}),
+                "mechanism": DataArray(["lines", "continuum"], dims=("mechanism",))}
+        for name, mole_fraction in atm.gases.items():
+            varname = "{}_absorption".format(name)
+            beta[varname] = DataArray(zeros(sizes), dims=dims, attrs={"units": "m-1"})
+
+            avg_mass = sum([x.abundance*x.mass for x in Molecule(name).isotopologues])
+            mol_id = Molecule(name).id
+            num_iso = len(Molecule(name).isotopologues)
+            transitions = self.lines_database.load_line_parameters(name, grid[0], grid[-1])
+            gas = self.lines_engine(transitions, mol_id, num_iso, avg_mass)
+
+            names = ["{}{}".format(name, x) for x in ["Foreign", "Self"]] \
+                    if name == "H2O" else [name,]
+            try:
+                gas_continua = [self.continua_engine[x]() for x in names]
+            except KeyError:
+                gas_continua = None
+            for i in range(t.data.size):
+                vmr = {x: y.data.flat[i] for x, y in atm.gases.items()}
+                n = number_density(p.data.flat[i], t.data.flat[i],
+                                   mole_fraction.data.flat[i])
+                j = unravel_index(i, t.data.shape)
+
+                # Calculate lines.
+                k = gas.absorption_coefficient(t.data.flat[i], p.data.flat[i],
+                                               mole_fraction.data.flat[i], grid)
+                indices = tuple(list(j) + [0, slice(None)])
+                beta[varname].values[indices] = n*k[:]
+
+                # Calculate continua.
+                if gas_continua is not None:
+                    indices = tuple(list(j) + [1, slice(None)])
+                    for continuum in gas_continua:
+                        k = continuum.spectra(t.data.flat[i], p.data.flat[i], vmr, grid)
+                        beta[varname].values[indices] += k[:]
+        return Dataset(beta)
