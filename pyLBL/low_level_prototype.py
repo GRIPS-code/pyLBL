@@ -4,7 +4,11 @@ from re import match
 
 plugins = get_entry_map("pyLBL")
 models = plugins.keys()
-molecular_lines = {key: value["Gas"].load() for key, value in plugins.items()}
+
+molecular_lines = {}
+for key, value in plugins.items():
+    if "Gas" in value:
+        molecular_lines[key] = value["Gas"].load()
 
 cross_sections = {}
 for key, value in plugins.items():
