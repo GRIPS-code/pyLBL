@@ -11,12 +11,12 @@ from .spectral_database import Hapi
 kb = 1.38064852e-23  # Boltzmann constant [J K-1].
 
 
-def number_density(pressure, temperature, volume_mixing_ratio):
+def number_density(temperature, pressure, volume_mixing_ratio):
     """Calculates the number density using the ideal gas law.
 
     Args:
-        pressure: Pressure [Pa].
         temperature: Temperature [K].
+        pressure: Pressure [Pa].
         volume_mixing_ratio: Volume-mixing ratio [mol mol-1].
 
     Returns:
@@ -79,7 +79,6 @@ class Spectroscopy(object):
         for name, mole_fraction in atm.gases.items():
             varname = "{}_absorption".format(name)
             beta[varname] = DataArray(zeros(sizes), dims=dims, attrs={"units": "m-1"})
-
             avg_mass = sum([x.abundance*x.mass for x in Molecule(name).isotopologues])
             mol_id = Molecule(name).id
             num_iso = len(Molecule(name).isotopologues)
@@ -94,7 +93,7 @@ class Spectroscopy(object):
                 gas_continua = None
             for i in range(t.data.size):
                 vmr = {x: y.data.flat[i] for x, y in atm.gases.items()}
-                n = number_density(p.data.flat[i], t.data.flat[i],
+                n = number_density(t.data.flat[i], p.data.flat[i],
                                    mole_fraction.data.flat[i])
                 j = unravel_index(i, t.data.shape)
 
