@@ -21,7 +21,8 @@ setup(
         "pyarts",
         "pyrad @ git+http://github.com/menzel-gfdl/pylbl@add-continua",
         "pygrt @ git+http://github.com/menzel-gfdl/pygrt@grips-code",
-#       "hapi2 @ git+ssh://git@github.com/menzel-gfdl/hapi2tmp@update-install",
+        # Private repos that require github personal access token:
+        "hapi2 @ git+http://github.com/menzel-gfdl/hapi2tmp@update-install",
     ],
     entry_points={
         "arts": ["Gas=pyLBL.pyarts_frontend:PyArtsGas",],
@@ -34,7 +35,7 @@ setup(
                    "O3Continuum=pyrad.lbl.continua.ozone:OzoneContinuum",
         ],
         "mt_ckd": ["CO2Continuum=mt_ckd.carbon_dioxide:CarbonDioxideContinuum",
-                   "H2OForeignContinuum=mt_ckd.water_vapor:WaterVaporSelfContinuum",
+                   "H2OForeignContinuum=mt_ckd.water_vapor:WaterVaporForeignContinuum",
                    "H2OSelfContinuum=mt_ckd.water_vapor:WaterVaporSelfContinuum",
                    "N2Continuum=mt_ckd.nitrogen:NitrogenContinuum",
                    "O2Continuum=mt_ckd.oxygen:OxygenContinuum",
