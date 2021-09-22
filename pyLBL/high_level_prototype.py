@@ -27,13 +27,15 @@ def number_density(temperature, pressure, volume_mixing_ratio):
 
 class Spectroscopy(object):
     """Line-by-line gas optics."""
-    def __init__(self, lines_backend="grtcode", continua_backend="mt_ckd"):
+    def __init__(self, hapi_config=None, lines_backend="grtcode", continua_backend="mt_ckd"):
         """Initializes object.  Reads databases to discover what information is available.
 
         Args:
-            local_path: Local directory where database is stored.
+            hapi_config: Dictionary of HAPI2 configuration options.
+            lines_backend: String name of model to use for lines calculation.
+            continua_backend: String name of model to use for molecular continua.
         """
-        self.lines_database = Hapi()
+        self.lines_database = Hapi(config=hapi_config)
         self.lines_engine = molecular_lines[lines_backend]
         self.continua_engine = continua[continua_backend]
 
