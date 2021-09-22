@@ -1,5 +1,8 @@
 # pyLBL
 
+This application aims to provide a simple, flexible framework for calculating line-by-line
+spectra.
+
 ## Installation
 
 #### HAPI2
@@ -31,16 +34,17 @@ and absorption cross sections.  Currently, the supported models are as follows:
 
 For example, to create a `Spectroscopy` object using GRTcode to calculate the lines
 and the MT-CKD continuum, use:
+
 ```python
 from pyLBL import Spectroscopy
 
 spectroscopy = Spectroscopy(lines_backend="grtcode", continua_backend="mt_ckd")
 ```
 
-#### Spectral database management.
+#### Spectral database management
 Spectral database managment is performed behind-the-schemes using HAPI2.
 
-#### User atmospheric inputs.
+#### User atmospheric inputs
 Atmospheric inputs should be passed in an `xarray DataSet` object.  As an example,
 the surface layer of the first CIRC case can be described by:
 
@@ -85,11 +89,11 @@ variables in the dataset should be read:
 
 ```python
 mapping = {
-    "play": "p" # name of pressure variable in dataset,
-    "tlay": "t" # name of temperature variable in dataset,
+    "play": "p", # name of pressure variable in dataset.
+    "tlay": "t", # name of temperature variable in dataset.
     "mole_fraction: {
-        "H2O" : "xh2o" # name of water vapor mole fraction variable in dataset,
-        "CO2" : "xco2" # name of carbon dioxided mole fraction variable in dataset,
+        "H2O" : "xh2o", # name of water vapor mole fraction variable in dataset.
+        "CO2" : "xco2", # name of carbon dioxided mole fraction variable in dataset.
         # et cetera
     },
 }
@@ -98,26 +102,70 @@ mapping = {
 If this dictionary is not provided, the application attempts to "discover" the variables
 in the dataset using their CF `standard_name` attributes:
 
-|variable                      | standard_name attribute       |
-|----------------------------- | ----------------------------- |
-|pressure                      | "air_pressure"                |
-|temperature                   | "air_temperature"             |
-|mole fraction of molecule xxx | "mole_fraction_of_xxx_in_air" |
+|variable                      | standard_name attribute         |
+|----------------------------- | ------------------------------- |
+|pressure                      | `"air_pressure"`                |
+|temperature                   | `"air_temperature"`             |
+|mole fraction of molecule xxx | `"mole_fraction_of_xxx_in_air"` |
 
 For a full list of valid `standard_name` attributes, go [here](http://cfconventions.org/Data/cf-standard-names/77/build/cf-standard-name-table.html).
 
-Spectral grid input should be defined as a numpy array, for example:
+Spectral grid input should in wavenumber [cm-1] and be defined as a numpy array, for example:
 
 ```python
 from numpy import arange
 grid = arange(1., 5001., 0.1)
 ```
 
-#### Absorption output.
+#### Absorption output
 Absorption coefficients can be calculated using the input described above by running:
 
 ```python
-absorption = spectroscopy.compute_absorption(self, atmosphere, grid)
+absorption = spectroscopy.compute_absorption(self, atmosphere, grid, mapping=None)
 ```
 
-The output is returned as an xarray `Dataset`.
+The output is returned as an xarray `Dataset`.  An example of what this output looks
+like in netCDF format is shown below.  For each molecule, the components of the full
+spectra are split into separate indices along the `mechanism` dimension.  The full spectra
+can be calculated by adding the different components together.
+
+```
+netcdf absorption {
+dimensions:
+        wavenumber = 49990 ;
+        mechanism = 2 ;
+        z = 1 ;
+variables:
+        double wavenumber(wavenumber) ;
+                wavenumber:_FillValue = NaN ;
+                wavenumber:units = "cm-1" ;
+        string mechanism(mechanism) ;
+        double H2O_absorption(z, mechanism, wavenumber) ;
+                H2O_absorption:_FillValue = NaN ;
+                H2O_absorption:units = "m-1" ;
+        double CO2_absorption(z, mechanism, wavenumber) ;
+                CO2_absorption:_FillValue = NaN ;
+                CO2_absorption:units = "m-1" ;
+        double O3_absorption(z, mechanism, wavenumber) ;
+                O3_absorption:_FillValue = NaN ;
+                O3_absorption:units = "m-1" ;
+        double N2O_absorption(z, mechanism, wavenumber) ;
+                N2O_absorption:_FillValue = NaN ;
+                N2O_absorption:units = "m-1" ;
+        double CO_absorption(z, mechanism, wavenumber) ;
+                CO_absorption:_FillValue = NaN ;
+                CO_absorption:units = "m-1" ;
+        double CH4_absorption(z, mechanism, wavenumber) ;
+                CH4_absorption:_FillValue = NaN ;
+                CH4_absorption:units = "m-1" ;
+        double O2_absorption(z, mechanism, wavenumber) ;
+                O2_absorption:_FillValue = NaN ;
+                O2_absorption:units = "m-1" ;
+        double N2_absorption(z, mechanism, wavenumber) ;
+                N2_absorption:_FillValue = NaN ;
+                N2_absorption:units = "m-1" ;
+data:
+
+mechanism = "lines", "continuum" ;
+}
+```
