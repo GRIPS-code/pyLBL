@@ -38,11 +38,35 @@ and the MT-CKD continuum, use:
 ```python
 from pyLBL import Spectroscopy
 
-spectroscopy = Spectroscopy(lines_backend="grtcode", continua_backend="mt_ckd")
+spectroscopy = Spectroscopy(hapi_config={"api_key": "<your HITRAN api key>",},
+                            lines_backend="grtcode", continua_backend="mt_ckd")
 ```
 
 #### Spectral database management
-Spectral database managment is performed behind-the-schemes using HAPI2.
+Spectral database managment is performed behind-the-schemes using HAPI2.  There are
+several configurable options for HAPI2 that may be passed to the `Spectroscopy` constructor
+in a dictionary, but the only one that is required is the `api_key`.   You must create
+an account on the [HITRAN website](https://hitran.org) in order to get an api key.  A
+more complete set of options includes:
+
+```python
+hapi_options = {
+    "engine": "sqlite", # Type of database to create.
+    "database": "local", # Name of the database (with a .db suffix added).
+    "user": "root",
+    "pass": null,
+    "database_dir": ".", # Directory where the local database will be created.
+    "debug": true,
+    "echo": false,
+    "display_fetch_url": false,
+    "proxy": null,
+    "host": "http://hitran.org", # Location of the remote database.
+    "api_version": "v2",
+    "tmpdir": "tmp", # Directory were temporary files will be created.
+    "api_key": "<your HITRAN api key>", # HITRAN api key associated with your account.
+    "info": "server_info.json"
+}
+```
 
 #### User atmospheric inputs
 Atmospheric inputs should be passed in an `xarray DataSet` object.  As an example,

@@ -18,15 +18,17 @@ default_config = {
 
 
 class Hapi(object):
-    def __init__(self, config=default_config, update_database=False):
+    def __init__(self, config, update_database=False):
         """Initialize an object that can interact with the HITRAN database.
 
         Args:
             config: Dictionary of HAPI configuration settings.
             update_database: Flag that forces the database to be recreated.
         """
-        self.database = "{}.db".format(config["database"])
-        init(config) # Modify hapi to allow user-specified config.
+        hapi_config = default_config.copy()
+        hapi_config.update(config)
+        init(hapi_config)
+        self.database = "{}.db".format(hapi_config["database"])
         fetch_parameter_metas()
         if isfile(self.database) and not update_database:
             info("{} exists, using as local spectral database.".format(self.database))
