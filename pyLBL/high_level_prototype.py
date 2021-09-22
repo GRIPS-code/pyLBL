@@ -58,18 +58,27 @@ class Spectroscopy(object):
         """
         return [str(x) for x in self.lines_database.molecules]
 
-    def compute_absorption(self, atmosphere, grid):
-        """Computes absorption coefficient [m-1] at specified wavenumbers given temperture,
+    def compute_absorption(self, atmosphere, grid, mapping=None):
+        """Computes absorption coefficient [m-1] at specified wavenumbers given temperature,
            pressure, and gas concentrations 
 
         Args:
             atmosphere: an xarray Dataset.
             grid: Wavenumber grid array [cm-1].
+            mapping: Dictionary describing dataset variable names.  Should have the form:
+                     {"play": <name of pressure variable in dataset>,
+                      "tlay": <name of temperature variable in dataset>,
+                      "mole_fraction:
+                          {"H2O" : <name of water vapor mole fraction variable in dataset>,
+                           "CO2" : <name of carbon dioxided mole fraction variable in dataset>,
+                           ...
+                          }
+                     }
 
         Returns:
             An xarray Dataset of absorption coefficients [m-1].
         """
-        atm = Atmosphere(atmosphere)
+        atm = Atmosphere(atmosphere, mapping=mapping)
         p = atm.pressure
         t = atm.temperature
         dims = list(t.dims) + ["mechanism", "wavenumber"]
