@@ -16,6 +16,7 @@ setup(
         "Operating System :: OS Independent",
     ],
     install_requires=[
+        # Required depenedencies.
         "xarray",
         "mt_ckd @ git+http://github.com/GRIPS-code/MT_CKD@fortran-90-and-python",
         "pyarts",
@@ -23,6 +24,12 @@ setup(
         "pygrt @ git+http://github.com/menzel-gfdl/pygrt@grips-code",
         # Private repos that require github personal access token:
         "hapi2 @ git+http://github.com/menzel-gfdl/hapi2tmp@update-install",
+
+        # To build documentation.
+        "Sphinx",
+        "sphinxcontrib-apidoc",
+        "sphinxcontrib-napoleon",
+        "sphinx-autopackagesummary",
     ],
     entry_points={
         "arts": ["Gas=pyLBL.pyarts_frontend:PyArtsGas",],
