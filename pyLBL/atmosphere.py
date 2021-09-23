@@ -12,6 +12,14 @@ _standard_name_to_formula = {"carbon_dioxide": "CO2",
 
 
 class Atmosphere(object):
+    """Atmospheric data container with basic data discover methods.
+
+    Attributes:
+        dataset: Input xarray Dataset.
+        pressure: xarray DataArray object for pressure [Pa].
+        temperature: xarray DataArray object for temperature [K].
+        gases: Dictionary of xarray DataArray objects for gas mole fractions [mol mol-1].
+    """
     def __init__(self, dataset, mapping=None):
         """Initializes an atmosphere object by reading data from an input xarray Dataset.
 
@@ -57,7 +65,7 @@ def _gases(dataset):
         dataset: xarray Dataset.
 
     Yields:
-        Gas name and xarray DataArray.
+        Gas name (i.e. "H2O") and xarray DataArray.
     """
     for var in dataset.data_vars.values():
         try:

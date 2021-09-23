@@ -7,8 +7,8 @@ spectra.
 
 #### HAPI2
 This application depends on HAPI2.  As of now, the maintainers of HAPI2 have decided to
-make that repository private.  *Thus only users who have been granted access to that
-repository can install/run this application.*  We hope the maintainers will open access to
+make that repository private.  **Thus only users who have been granted access to that
+repository can install/run this application.**  We hope the maintainers will open access to
 that repository to the public in the near future.  If you have 2-factor authentication
 active for your account, cloning the HAPI2 repository via HTTPS requires a github
 [personal access token](https://stackoverflow.com/questions/31305945/git-clone-from-github-over-https-with-two-factor-authentication).
@@ -23,35 +23,34 @@ pip install .
 ```
 
 ## High-level API
-The calculation of absorption coefficients requires a `Spectroscopy` object.  This object
-will control the construction of a local spectral database and allow users to choose
-which models are used to calculate the molecular lines, various molecular continua,
-and absorption cross sections.  Currently, the supported models are as follows:
-
-|component | models                                                                       |
-|--------- | ---------------------------------------------------------------------------- |
-|lines     | ["grtcode"](https://github.com/menzel-gfdl/pygrt/tree/grips-code)            |
-|continua  | ["mt_ckd"](https://github.com/GRIPS-code/MT_CKD/tree/fortran-90-and-python)  |
-
-For example, to create a `Spectroscopy` object using GRTcode to calculate the lines
-and the MT-CKD continuum, use:
-
-```python
-from pyLBL import Spectroscopy
-
-spectroscopy = Spectroscopy(hapi_config={"api_key": "<your HITRAN api key>",},
-                            lines_backend="grtcode", continua_backend="mt_ckd")
-```
+This application aims to improve on existing line-by-line radiative transfer models
+by separating the data management and calculation.  Data management is handled by
+a `SpectralDatabase` object, which allows the user to construct a local database
+of up-to-date line parameters, continuum coefficients and cross sections
+without having to explicitly interact with the ascii/data files typically
+needed when using existing line-by-line models.  Absorption spectra calculation
+is handled by a `Spectroscopy` object, which allows user to specify which molecular
+lines, continua, and cross section models they would like to use.  The details of
+each of these objects are discussed further in the next sections.
 
 #### Spectral database management
-Spectral database managment is performed behind-the-schemes using HAPI2.  There are
-several configurable options for HAPI2 that may be passed to the `Spectroscopy` constructor
-in a dictionary, but the only one that is required is the `api_key`.   You must create
-an account on the [HITRAN website](https://hitran.org) in order to get an api key.  A
+A `SpectralDatabase` object provides an interface to the current
+[HITRAN](https://hitran.org) database of molecular line parameters.  To create a database
+object of transitions for a specific set of molecules in a specific spectral range, run:
+
+```python
+from pyLBL import SpectralDatabase
+
+database = SpectralDatabase(options, molecules=["H2O", "CO2"], numin=0., numax=5000.)
+```
+
+There are several configurable options that may be passed in to the constructor
+as a dictionary, but only the `api_key` is required.   You must create an account on
+the [HITRAN website](https://hitran.org) in order to get an api key.  A
 more complete set of options includes:
 
 ```python
-hapi_options = {
+options = {
     "engine": "sqlite", # Type of database to create.
     "database": "local", # Name of the database (with a .db suffix added).
     "user": "root",
@@ -68,6 +67,32 @@ hapi_options = {
     "info": "server_info.json",
 }
 ```
+
+If a local database file (whose path is constructed from `options["database_dir"]`
+and `options["database"]` with the suffix `.db`) already exists, the application
+assumes it has been constructed from a previous and is reused.  If no such file
+exists, the application will create one.
+
+#### Absorption calculation
+A `Spectroscopy` object allow users to choose which models are used to calculate the
+molecular lines, various molecular continua, and absorption cross sections.  Currently,
+the supported models are as follows:
+
+|component | models                                                                       |
+|--------- | ---------------------------------------------------------------------------- |
+|lines     | ["grtcode"](https://github.com/menzel-gfdl/pygrt/tree/grips-code)            |
+|continua  | ["mt_ckd"](https://github.com/GRIPS-code/MT_CKD/tree/fortran-90-and-python)  |
+
+For example, to create a `Spectroscopy` object using GRTcode to calculate the lines
+and the MT-CKD continuum, use:
+
+```python
+from pyLBL import Spectroscopy
+
+spectroscopy = Spectroscopy(atmosphere, grid, database, lines_backend="grtcode",
+                            continua_backend="mt_ckd")
+```
+
 
 #### User atmospheric inputs
 Atmospheric inputs should be passed in an xarray `Dataset` object.  As an example,
