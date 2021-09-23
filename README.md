@@ -18,6 +18,7 @@ Make sure that you have the most recent version of `pip`, then run
 the following command in the base directory of the repository:
 
 ```python
+pip install --upgrade pip # If you need to upgrade pip.
 pip install .
 ```
 
@@ -54,22 +55,22 @@ hapi_options = {
     "engine": "sqlite", # Type of database to create.
     "database": "local", # Name of the database (with a .db suffix added).
     "user": "root",
-    "pass": null,
+    "pass": None,
     "database_dir": ".", # Directory where the local database will be created.
-    "debug": true,
-    "echo": false,
-    "display_fetch_url": false,
-    "proxy": null,
+    "debug": True,
+    "echo": False,
+    "display_fetch_url": False,
+    "proxy": None,
     "host": "http://hitran.org", # Location of the remote database.
     "api_version": "v2",
     "tmpdir": "tmp", # Directory were temporary files will be created.
     "api_key": "<your HITRAN api key>", # HITRAN api key associated with your account.
-    "info": "server_info.json"
+    "info": "server_info.json",
 }
 ```
 
 #### User atmospheric inputs
-Atmospheric inputs should be passed in an `xarray DataSet` object.  As an example,
+Atmospheric inputs should be passed in an xarray `Dataset` object.  As an example,
 the surface layer of the first CIRC case can be described by:
 
 ```python
@@ -102,7 +103,7 @@ def create_circ_xarray_dataset():
             "xn2": variable(xn2, "mol mol-1", "mole_fraction_of_nitrogen_in_air"),
          },
          coords={
-             "layer": (["z",], [1,])
+             "layer": (["z",], [1,]),
          },
     )
 ```
@@ -115,7 +116,7 @@ variables in the dataset should be read:
 mapping = {
     "play": "p", # name of pressure variable in dataset.
     "tlay": "t", # name of temperature variable in dataset.
-    "mole_fraction: {
+    "mole_fraction": {
         "H2O" : "xh2o", # name of water vapor mole fraction variable in dataset.
         "CO2" : "xco2", # name of carbon dioxided mole fraction variable in dataset.
         # et cetera
