@@ -4,7 +4,7 @@ from hapi2 import Molecule
 from numpy import unravel_index, zeros
 
 from .atmosphere import Atmosphere
-from .low_level_prototype import continua, molecular_lines
+from .low_level_api import continua, molecular_lines
 from .spectral_database import SpectralDatabase
 
 
