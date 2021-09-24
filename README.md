@@ -168,16 +168,21 @@ grid = arange(1., 5001., 0.1)
 ```
 
 #### Absorption output
-Absorption coefficients can be calculated using the input described above by running:
+Absorption coefficients can be calculated using the `Spectroscopy` object described
+above by running:
 
 ```python
-absorption = spectroscopy.compute_absorption(self, atmosphere, grid, mapping=None)
+absorption = spectroscopy.compute_absorption(self, output_format="all")
+
+#Optional: convert dataset to netcdf.
+absorption.to_netcdf("<name of output file>")
 ```
 
-The output is returned as an xarray `Dataset`.  An example of what this output looks
-like in netCDF format is shown below.  For each molecule, the components of the full
-spectra are split into separate indices along the `mechanism` dimension.  The full spectra
-can be calculated by adding the different components together.
+The output is returned as an xarray `Dataset`.  The exact format of the output data
+depends on the value of the `output_format` parameter.  When set to `"all"` (which is
+currently the default), the dataset will return the spectra split up by molecule
+and mechansim (lines, continuum, cross_section). An example viewed netCDF format
+would look like this:
 
 ```
 netcdf absorption {
@@ -217,5 +222,64 @@ variables:
 data:
 
 mechanism = "lines", "continuum" ;
+}
+```
+
+If the `output_format` parameter is instead set to `"gas"`, the spectra for
+the different mechanims will be summed for each molecule, yield output that looks
+like this (in netCDF format).
+
+```
+netcdf absorption {
+dimensions:
+        wavenumber = 49990 ;
+        z = 1 ;
+variables:
+        double wavenumber(wavenumber) ;
+                wavenumber:_FillValue = NaN ;
+                wavenumber:units = "cm-1" ;
+        double H2O_absorption(z, wavenumber) ;
+                H2O_absorption:_FillValue = NaN ;
+                H2O_absorption:units = "m-1" ;
+        double CO2_absorption(z, wavenumber) ;
+                CO2_absorption:_FillValue = NaN ;
+                CO2_absorption:units = "m-1" ;
+        double O3_absorption(z, wavenumber) ;
+                O3_absorption:_FillValue = NaN ;
+                O3_absorption:units = "m-1" ;
+        double N2O_absorption(z, wavenumber) ;
+                N2O_absorption:_FillValue = NaN ;
+                N2O_absorption:units = "m-1" ;
+        double CO_absorption(z, wavenumber) ;
+                CO_absorption:_FillValue = NaN ;
+                CO_absorption:units = "m-1" ;
+        double CH4_absorption(z, wavenumber) ;
+                CH4_absorption:_FillValue = NaN ;
+                CH4_absorption:units = "m-1" ;
+        double O2_absorption(z, wavenumber) ;
+                O2_absorption:_FillValue = NaN ;
+                O2_absorption:units = "m-1" ;
+        double N2_absorption(z, wavenumber) ;
+                N2_absorption:_FillValue = NaN ;
+                N2_absorption:units = "m-1" ;
+}
+```
+
+Lastly, if the `output_format` parameter is set to any other format, only the total
+absorption spectra (summed over all molecules) will be returned.  In netCDF format, the
+resulting dataset will appear like this:
+
+```
+netcdf absorption {
+dimensions:
+        wavenumber = 49990 ;
+        z = 1 ;
+variables:
+        double wavenumber(wavenumber) ;
+                wavenumber:_FillValue = NaN ;
+                wavenumber:units = "cm-1" ;
+        double absorption(z, wavenumber) ;
+                absorption:_FillValue = NaN ;
+                absorption:units = "m-1" ;
 }
 ```
