@@ -39,6 +39,8 @@ if __name__ == "__main__":
     dataset = create_circ_xarray_dataset()
     grid = arange(1., 5000., 0.1)
     s = Spectroscopy(dataset, grid,
-                     hapi_config={"api_key": "9445c269-77cd-4221-8c8d-0805ab75d8d9"})
-    output = s.compute_absorption()
-    output.to_netcdf("out.nc")
+                     hapi_config={"api_key": None})
+    for i in ["all", "gas", None]:
+        output = s.compute_absorption(output_format=i)
+
+        output.to_netcdf("out-" + str(i or "total") + ".nc")
