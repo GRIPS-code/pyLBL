@@ -70,7 +70,7 @@ options = {
 
 If a local database file (whose path is constructed from `options["database_dir"]`
 and `options["database"]` with the suffix `.db`) already exists, the application
-assumes it has been constructed from a previous and is reused.  If no such file
+assumes it has been constructed from a previous run and is reused.  If no such file
 exists, the application will create one.
 
 #### Absorption calculation
@@ -89,10 +89,18 @@ and the MT-CKD continuum, use:
 ```python
 from pyLBL import Spectroscopy
 
-spectroscopy = Spectroscopy(atmosphere, grid, database, lines_backend="grtcode",
-                            continua_backend="mt_ckd")
+spectroscopy = Spectroscopy(atmosphere, grid, database=database, mapping=mapping,
+                            lines_backend="grtcode", continua_backend="mt_ckd")
 ```
 
+Here the `database` argument is optional.  If provided, it must be a `SpectralDatabase`
+object like the one described above.  If not provided, the application will create
+a `SpectralDatabase` object behind-the-scenes for the user that will include all
+gases found in input `atmosphere` dataset (described below) and spectral range
+defined by the input spectral grid (also described below).  In this case, the
+user must also include the `hapi_config` argument, and pass a dictionary of
+database configuration options (see above) that includes an
+`api_key="<your HITRAN api key>"` entry.
 
 #### User atmospheric inputs
 Atmospheric inputs should be passed in an xarray `Dataset` object.  As an example,
@@ -226,7 +234,7 @@ mechanism = "lines", "continuum" ;
 ```
 
 If the `output_format` parameter is instead set to `"gas"`, the spectra for
-the different mechanims will be summed for each molecule, yield output that looks
+the different mechanims will be summed for each molecule, yielding output that looks
 like this (in netCDF format).
 
 ```
