@@ -26,10 +26,10 @@ pip install .
 This application aims to improve on existing line-by-line radiative transfer models
 by separating the data management and calculation.  Data management is handled by
 a `SpectralDatabase` object, which allows the user to construct a local database
-of up-to-date line parameters, continuum coefficients and cross sections
+of up-to-date line parameters, continuum coefficients, and cross sections
 without having to explicitly interact with the ascii/data files typically
 needed when using existing line-by-line models.  Absorption spectra calculation
-is handled by a `Spectroscopy` object, which allows user to specify which molecular
+is handled by a `Spectroscopy` object, which allows the user to specify which molecular
 lines, continua, and cross section models they would like to use.  The details of
 each of these objects are discussed further in the next sections.
 
@@ -51,27 +51,30 @@ more complete set of options includes:
 
 ```python
 options = {
-    "engine": "sqlite", # Type of database to create.
+    "api_key": "<your HITRAN api key>", # HITRAN api key associated with your account.
+    "api_version": "v2",
     "database": "local", # Name of the database (with a .db suffix added).
-    "user": "root",
-    "pass": None,
     "database_dir": ".", # Directory where the local database will be created.
     "debug": True,
-    "echo": False,
     "display_fetch_url": False,
-    "proxy": None,
+    "echo": False,
+    "engine": "sqlite", # Type of database to create.
     "host": "http://hitran.org", # Location of the remote database.
-    "api_version": "v2",
-    "tmpdir": "tmp", # Directory were temporary files will be created.
-    "api_key": "<your HITRAN api key>", # HITRAN api key associated with your account.
     "info": "server_info.json",
+    "pass": None,
+    "proxy": None,
+    "tmpdir": "tmp", # Directory were temporary files will be created.
+    "user": "root",
 }
 ```
 
 If a local database file (whose path is constructed from `options["database_dir"]`
 and `options["database"]` with the suffix `.db`) already exists, the application
 assumes it has been constructed from a previous run and is reused.  If no such file
-exists, the application will create one.
+exists, the application will create one.  In the example code above, the `numin`
+and `numax` arguments define the lower and upper bounds of a spectral range
+(in cm<sup>-1</sup>).  Only transitions within this spectral range will be included in the
+local database.
 
 #### Absorption calculation
 A `Spectroscopy` object allow users to choose which models are used to calculate the
@@ -96,14 +99,14 @@ spectroscopy = Spectroscopy(atmosphere, grid, database=database, mapping=mapping
 Here the `database` argument is optional.  If provided, it must be a `SpectralDatabase`
 object like the one described above.  If not provided, the application will create
 a `SpectralDatabase` object behind-the-scenes for the user that will include all
-gases found in input `atmosphere` dataset (described below) and spectral range
+gases found in the input `atmosphere` dataset (described below) and spectral range
 defined by the input spectral grid (also described below).  In this case, the
 user must also include the `hapi_config` argument, and pass a dictionary of
 database configuration options (see above) that includes an
 `api_key="<your HITRAN api key>"` entry.
 
 #### User atmospheric inputs
-Atmospheric inputs should be passed in an xarray `Dataset` object.  As an example,
+Atmospheric inputs should be passed in as an xarray `Dataset` object.  As an example,
 the surface layer of the first CIRC case can be described by:
 
 ```python
@@ -141,8 +144,8 @@ def create_circ_xarray_dataset():
     )
 ```
 
-As shown in this example, the units of presure must be `Pa`, temperature must be `K`,
-and mole fraction must be `mol mol-1`.  Users may define a dictionary specifying which
+As shown in this example, the units of presure must be Pa, temperature must be K,
+and mole fraction must be mol mol<sup>-1</sup>.  Users may define a dictionary specifying which
 variables in the dataset should be read:
 
 ```python
@@ -168,7 +171,8 @@ in the dataset using their CF `standard_name` attributes:
 
 For a full list of valid `standard_name` attributes, go [here](http://cfconventions.org/Data/cf-standard-names/77/build/cf-standard-name-table.html).
 
-Spectral grid input should in wavenumber [cm-1] and be defined as a numpy array, for example:
+Spectral grid input should in wavenumber [cm<sup>-1</sup>] and be defined as a numpy
+array, for example:
 
 ```python
 from numpy import arange
@@ -182,14 +186,14 @@ above by running:
 ```python
 absorption = spectroscopy.compute_absorption(self, output_format="all")
 
-#Optional: convert dataset to netcdf.
+# Optional: convert dataset to netcdf.
 absorption.to_netcdf("<name of output file>")
 ```
 
 The output is returned as an xarray `Dataset`.  The exact format of the output data
-depends on the value of the `output_format` parameter.  When set to `"all"` (which is
+depends on the value of the `output_format` argument.  When set to `"all"` (which is
 currently the default), the dataset will return the spectra split up by molecule
-and mechansim (lines, continuum, cross_section). An example viewed netCDF format
+and mechansim (lines, continuum, cross_section). An example viewed in netCDF format
 would look like this:
 
 ```
@@ -233,9 +237,9 @@ mechanism = "lines", "continuum" ;
 }
 ```
 
-If the `output_format` parameter is instead set to `"gas"`, the spectra for
+If the `output_format` argument is instead set to `"gas"`, the spectra for
 the different mechanims will be summed for each molecule, yielding output that looks
-like this (in netCDF format).
+like this (in netCDF format):
 
 ```
 netcdf absorption {
@@ -273,7 +277,7 @@ variables:
 }
 ```
 
-Lastly, if the `output_format` parameter is set to any other format, only the total
+Lastly, if the `output_format` argument is set to any other value, only the total
 absorption spectra (summed over all molecules) will be returned.  In netCDF format, the
 resulting dataset will appear like this:
 

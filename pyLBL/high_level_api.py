@@ -1,6 +1,7 @@
 from xarray import DataArray, Dataset
 
 from hapi2 import Molecule
+from numpy import sum as npsum
 from numpy import unravel_index, zeros
 
 from .atmosphere import Atmosphere
@@ -165,11 +166,11 @@ class Spectroscopy(object):
             output.update(beta)
         elif output_format == "gas":
             dims.pop(-2)
-            output.update({x: DataArray(sum(y.values, -2), dims=dims, attrs=units)
+            output.update({x: DataArray(npsum(y.values, axis=-2), dims=dims, attrs=units)
                            for x, y in beta.items()})
         else:
             dims.pop(-2)
-            data = [DataArray(sum(x.values, -2), dims=dims, attrs=units) for x in
+            data = [DataArray(npsum(x.values, axis=-2), dims=dims, attrs=units) for x in
                     beta.values()]
             output["absorption"] = DataArray(sum([x.values for x in data]),
                                              dims=dims, attrs=units)

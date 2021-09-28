@@ -6,14 +6,17 @@ from hapi2 import fetch_isotopologues, fetch_molecules, fetch_parameter_metas, \
 
 
 _default_config = {
-   "engine": "sqlite",
-   "database": "local",
-   "user": "root",
-   "database_dir": ".",
-   "host": "http://hitran.org",
-   "api_version": "v2",
-   "tmpdir": "tmp",
-   "api_key": None,
+    "api_key": None,
+    "api_version": "v2",
+    "database": "local",
+    "database_dir": ".",
+    "debug": False,
+    "display_fetch_url": False,
+    "echo": False,
+    "engine": "sqlite",
+    "host": "http://hitran.org",
+    "tmpdir": "tmp",
+    "user": "root",
 }
 
 
