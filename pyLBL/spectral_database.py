@@ -2,7 +2,7 @@ from logging import info
 from os.path import isfile, join
 
 from hapi2 import fetch_isotopologues, fetch_molecules, fetch_parameter_metas, \
-                  fetch_transitions, init, Molecule, Transition
+                  fetch_transitions, init, Molecule, Isotopologue, Transition
 
 
 _default_config = {
@@ -68,13 +68,14 @@ class SpectralDatabase(object):
         else:
             info("Creating local spectral database {}".format(self.database))
             self._create_local_database(molecules, numin, numax)
-        self.molecules = Molecule.all()
+        molecules = set([str(x) for x in Isotopologue.all().getcol("iso.molecule")])
+        self.molecules = {}
         self.isotopologues = {}
         self.transitions = {}
-        for molecule in self.molecules:
-            if str(molecule) in ["Chlorine Nitrate",]: continue
-            self.isotopologues[str(molecule)] = Molecule(str(molecule)).isotopologues
-            self.transitions[str(molecule)] = Molecule(str(molecule)).transitions
+        for molecule in molecules:
+            x = Molecule(str(molecule))
+            if str(x) in ["Chlorine Nitrate",]: continue
+            self.molecules[x.ordinary_formula] = x
 
     @staticmethod
     def _create_local_database(molecules, numin, numax, line_list="line-list"):
@@ -103,8 +104,7 @@ class SpectralDatabase(object):
                 _download_data(molecule, numin, numax, line_list)
 
 
-    @staticmethod
-    def load_line_parameters(formula, numin, numax):
+    def load_line_parameters(self, formula, numin, numax):
         """Reads the HITRAN molecular line parameters from a local SQL database.
 
         Args:
@@ -115,5 +115,5 @@ class SpectralDatabase(object):
         Returns:
             A list of Transition objects.
         """
-        return Molecule(formula).transitions. \
+        return self.molecules[formula].transitions. \
                filter(Transition.nu>=numin).filter(Transition.nu<=numax)

@@ -34,11 +34,9 @@ class MoleculeCache(object):
         gas_continua: List of objects controlling the curret continua backend plugin.
     """
     def __init__(self, name, grid, lines_database, lines_engine, continua_engine):
-        avg_mass = sum([x.abundance*x.mass for x in Molecule(name).isotopologues])
-        mol_id = Molecule(name).id
-        num_iso = len(Molecule(name).isotopologues)
+        molecule = Molecule(name)
         transitions = lines_database.load_line_parameters(name, grid[0], grid[-1])
-        self.gas = lines_engine(transitions, mol_id, num_iso, avg_mass)
+        self.gas = lines_engine(transitions, name, molecule.id, molecule.isotopologues)
         names = ["{}{}".format(name, x) for x in ["Foreign", "Self"]] \
                  if name == "H2O" else [name,]
         try:
@@ -59,7 +57,7 @@ class Spectroscopy(object):
         lines_engine: Object exposed by the current molecular lines backend.
     """
     def __init__(self, atmosphere, grid, database=None, mapping=None, hapi_config=None,
-                 lines_backend="grtcode", continua_backend="mt_ckd"):
+                 lines_backend="pyLBL", continua_backend="mt_ckd"):
         """Initializes object.
 
         Example::
