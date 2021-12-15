@@ -1,8 +1,9 @@
 from logging import info
 from os.path import isfile, join
+from pathlib import Path
 
-from hapi2 import fetch_isotopologues, fetch_molecules, fetch_parameter_metas, \
-                  fetch_transitions, init, Molecule, Isotopologue, Transition
+from hapi2 import fetch_info, fetch_isotopologues, fetch_molecules, fetch_parameter_metas, \
+                  fetch_transitions, Molecule, Isotopologue, SETTINGS, Transition
 
 
 _default_config = {
@@ -61,7 +62,9 @@ class SpectralDatabase(object):
         config_.update(config)
         self.database = join(config_["database_dir"], "{}.db".format(config_["database"]))
         local_db = isfile(self.database) and not update_database
-        init(config_)
+        SETTINGS.update(config_)
+        Path(SETTINGS["tmpdir"]).mkdir(exist_ok=True)
+        fetch_info()
         fetch_parameter_metas()
         if local_db:
             info("{} exists, using as local spectral database.".format(self.database))

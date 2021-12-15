@@ -21,12 +21,12 @@ class SpectralLines(object):
         for x in parameters:
             setattr(self, x, [])
         for transition in transitions:
-            self.d_air.append(transition.parse.delta_air)
+            self.d_air.append(transition.delta_air)
             self.en.append(transition.elower)
-            self.gamma_air.append(transition.parse.gamma_air)
-            self.gamma_self.append(transition.parse.gamma_self)
-            self.iso.append(transition.parse.local_iso_id)
-            self.n_air.append(transition.parse.n_air)
+            self.gamma_air.append(transition.gamma_air)
+            self.gamma_self.append(transition.gamma_self)
+            self.iso.append(transition.local_iso_id)
+            self.n_air.append(transition.n_air)
             self.s.append(transition.sw)
             self.v.append(transition.nu)
         for x in parameters:
