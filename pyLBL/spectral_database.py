@@ -71,7 +71,7 @@ class SpectralDatabase(object):
         else:
             info("Creating local spectral database {}".format(self.database))
             self._create_local_database(molecules, numin, numax)
-        molecules = set([str(x) for x in Isotopologue.all().getcol("iso.molecule")])
+        molecules = set([str(x.molecule) for x in Isotopologue.all()])
         self.molecules = {}
         self.isotopologues = {}
         self.transitions = {}
