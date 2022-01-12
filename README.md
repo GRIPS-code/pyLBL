@@ -184,7 +184,7 @@ Absorption coefficients can be calculated using the `Spectroscopy` object descri
 above by running:
 
 ```python
-absorption = spectroscopy.compute_absorption(self, output_format="all")
+absorption = spectroscopy.compute_absorption(output_format="all")
 
 # Optional: convert dataset to netcdf.
 absorption.to_netcdf("<name of output file>")
