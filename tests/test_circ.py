@@ -60,16 +60,13 @@ class Circ(object):
             vmr = {x: dataset.variables["{}_abundance".format(x)][:]
                    for x in ["H2O", "CO2", "O3", "N2O", "CO", "CH4", "O2"]}
             vmr["N2" ] = asarray(pressure.size*[0.78])
-
-            print("foo", repr(vmr["H2O"]), repr(pressure), repr(temperature))
-
             vars_ = {
                 "play": _variable(pressure, "Pa", "air_pressure"),
                 "tlay": _variable(temperature, "K", "air_temperature"),
             }
             for key, value in vmr.items():
                 vars_.update({key: _variable(value, "mol mol-1",
-                                           "mole_fraction_of_{}_in_air".format(names[key]))})
+                                             "mole_fraction_of_{}_in_air".format(names[key]))})
         self.dataset = Dataset(data_vars=vars_)
 
     def __enter__(self):
