@@ -3,6 +3,45 @@
 This application aims to provide a simple, flexible framework for calculating line-by-line
 spectra.
 
+## Quickstart - calculating your first spectra
+Let's jump right in with a very simple example.  After running through the installation
+steps detailed below, spectra for a point in an atmosphere can be calculated by:
+
+```python
+from numpy import arange
+from pyLBL import Spectroscopy
+from xarray import Dataset
+
+# An xarray dataset describing the atmosphere to simulate is required.  This can be a
+# cf-compliant netcdf file or explicitly defined (as below).
+atmosphere = Dataset(
+    data_vars={
+        "play": variable([98388.,], "Pa", "air_pressure"),
+        "tlay": variable([288.99,], "K", "air_temperature"),
+        "xh2o": variable([0.006637074,], "mol mol-1", "mole_fraction_of_water_vapor_in_air"),
+        "xco2": variable([0.0003599889,], "mol mol-1", "mole_fraction_of_carbon_dioxide_in_air"),
+        "xo3": variable([6.859128e-08,], "mol mol-1", "mole_fraction_of_ozone_in_air"),
+        "xn2o": variable([3.199949e-07,], "mol mol-1", "mole_fraction_of_nitrous_oxide_in_air"),
+        "xco": variable([1.482969e-07,], "mol mol-1", "mole_fraction_of_carbon_monoxide_in_air"),
+        "xch4": variable([1.700002e-06,], "mol mol-1", "mole_fraction_of_methane_in_air"),
+        "xo2": variable([0.208996,], "mol mol-1", "mole_fraction_of_oxygen_in_air"),
+        "xn2": variable([0.781,], "mol mol-1", "mole_fraction_of_nitrogen_in_air"),
+     },
+)
+
+# A wavenumber grid in units of [cm-1] is also required.
+grid = arange(1., 5000., 0.1)
+
+# A Spectroscopy object controls the absorption coefficient calculation.
+s = Spectroscopy(dataset, grid, hapi_config={"api_key": "<your HITRAN api key>"})
+spectra = s.compute_absorption()
+output.to_netcdf("spectra.nc")
+```
+
+Here your HITRAN api key can be located by registering/logging into https://hitran.org and
+looking at your profile page.  More information detailing each of the above steps are located
+in the sections below.
+
 ## Installation
 
 #### HAPI2
