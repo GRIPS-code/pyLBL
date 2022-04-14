@@ -20,11 +20,9 @@ setup(
         "netCDF4",
         "numpy",
         "scipy",
+        "sqlalchemy",
         "xarray",
         "mt_ckd @ git+http://github.com/GRIPS-code/MT_CKD@fortran-90-and-python",
-
-        # Private repos that require github personal access token:
-#       "hapi2 @ git+http://github.com/menzel-gfdl/hapi2tmp@update-install",
 
         # To build documentation.
         "Sphinx",

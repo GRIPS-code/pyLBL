@@ -34,13 +34,15 @@ def create_circ_xarray_dataset():
 
 if __name__ == "__main__":
     from numpy import arange
-    from pyLBL import Spectroscopy
+    from pyLBL import Database, Spectroscopy, WebApi
 
+    webapi = WebApi(None)
+    database = Database("foo.db")
+    database.create(webapi, ["H2O", "CO2", "O3", "N2O", "CO", "CH4", "O2", "N2"])
     dataset = create_circ_xarray_dataset()
-    grid = arange(1., 5000., 0.1)
-    s = Spectroscopy(dataset, grid,
-                     hapi_config={"api_key": None})
+    grid = arange(1., 5000., 1.)
+    s = Spectroscopy(dataset, grid, database)
+    print(s.list_molecules())
     for i in ["all", "gas", None]:
         output = s.compute_absorption(output_format=i)
-
         output.to_netcdf("out-" + str(i or "total") + ".nc")

@@ -1,12 +1,10 @@
 from xarray import DataArray, Dataset
 
-from hapi2 import Molecule
 from numpy import sum as npsum
 from numpy import unravel_index, zeros
 
 from .atmosphere import Atmosphere
 from .low_level_api import continua, molecular_lines
-from .spectral_database import SpectralDatabase
 
 
 kb = 1.38064852e-23  # Boltzmann constant [J K-1].
@@ -34,9 +32,7 @@ class MoleculeCache(object):
         gas_continua: List of objects controlling the curret continua backend plugin.
     """
     def __init__(self, name, grid, lines_database, lines_engine, continua_engine):
-        molecule = Molecule(name)
-        transitions = lines_database.load_line_parameters(name, grid[0], grid[-1])
-        self.gas = lines_engine(transitions, name, molecule.id, molecule.isotopologues)
+        self.gas = lines_engine(*lines_database.gas(name))
         names = ["{}{}".format(name, x) for x in ["Foreign", "Self"]] \
                  if name == "H2O" else [name,]
         try:
@@ -53,10 +49,10 @@ class Spectroscopy(object):
         cache: Dictionary of MoleculeCache objects.
         continua_engine: Object exposed by the current molecular cotinuum backed.
         grid: Numpy array describing the spectral grid [cm-1].
-        lines_database: SpectralDatabase object controlling the spectral database.
+        lines_database: Database object controlling the spectral database.
         lines_engine: Object exposed by the current molecular lines backend.
     """
-    def __init__(self, atmosphere, grid, database=None, mapping=None, hapi_config=None,
+    def __init__(self, atmosphere, grid, database, mapping=None, 
                  lines_backend="pyLBL", continua_backend="mt_ckd"):
         """Initializes object.
 
@@ -74,30 +70,25 @@ class Spectroscopy(object):
         Args:
             atmosphere: xarray Dataset describing atmospheric conditions.
             grid: Wavenumber grid array [cm-1].
-            database: SpectralDatabase object to use.
+            database: Database object to use.
             mapping: Dictionary describing atmospheric dataset variable names.
-            hapi_config: Dictionary of HAPI2 configuration options.
             lines_backend: String name of model to use for lines calculation.
             continua_backend: String name of model to use for molecular continua.
         """
         self.atmosphere = Atmosphere(atmosphere, mapping=mapping)
         self.grid = grid
-        self.lines_database = database if database is not None else \
-            SpectralDatabase(molecules=self.atmosphere.gases.keys(),
-                             numin=grid[0], numax=grid[-1], config=hapi_config)
+        self.lines_database = database
         self.lines_engine = molecular_lines[lines_backend]
         self.continua_engine = continua[continua_backend]
         self.cache = {}
 
     def list_molecules(self):
-        """Provides information about each molecule in the local database.
+        """Provides a list of molecules available in the specral lines database.
 
         Returns:
-            Dictionary where the key is name of each gas available in the database
-            and the value is a dictionary describing the different objects capable
-            of calculating absorption coefficients.
+            List of string molecule formulae available in the specral lines database.
         """
-        return [str(x) for x in self.lines_database.molecules]
+        return self.lines_database.molecules()
 
     def compute_absorption(self, output_format="all"):
         """Computes absorption coefficient [m-1] at specified wavenumbers given temperature,
@@ -118,8 +109,9 @@ class Spectroscopy(object):
         t = self.atmosphere.temperature
 
         # Initialize the output dataset.
-        output = {"wavenumber": DataArray(self.grid, dims=("wavenumber",),
-                                          attrs={"units": "cm-1"}),}
+        output = {
+            "wavenumber": DataArray(self.grid, dims=("wavenumber",), attrs={"units": "cm-1"}),
+        }
         mechanisms = ["lines", "continuum"]
         dims = list(t.dims) + ["mechanism", "wavenumber",]
         sizes = [x for x in t.sizes.values()] + [len(mechanisms), self.grid.size,]

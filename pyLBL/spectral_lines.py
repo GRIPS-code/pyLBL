@@ -133,16 +133,15 @@ def line_profile(v, s, q, iso, en, d_air, n_air, n_self, gamma_air, gamma_self,
 
 
 class Gas(object):
-    def __init__(self, transitions, formula, molecule_id, isotopologues):
+    def __init__(self, formula, mass, transitions):
         """Initializes object.
 
         Args:
-            transitions: List of HAPI Transitions objects.
             formula: String chemical formula.
-            molecule_id: Integer Hitran molecule identifier.
-            isotopologues: List of HAPIT Isotopologue objects.
+            mass: List of isotopologue masses.
+            transitions: List of TransitionTable objects.
         """
-        self.mass = asarray([float(x.mass) for x in isotopologues])
+        self.mass = asarray(mass)
         self.transitions = SpectralLines(transitions)
         self.q = TotalPartitionFunction(formula)
         self.s = initial_strength_correction(self.transitions.s, self.q,
