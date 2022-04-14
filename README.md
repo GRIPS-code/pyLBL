@@ -9,8 +9,15 @@ steps detailed below, spectra for a point in an atmosphere can be calculated by:
 
 ```python
 from numpy import arange
-from pyLBL import Spectroscopy
+from pyLBL import Database, Spectroscopy, WebApi
 from xarray import Dataset
+
+# Download the line paramters and store them in a local sqlite database.
+# You should only have to create the database once.  Subsequent runs can
+# then re-use the already created database.
+webapi = WebApi("<your HITRAN api key>")
+database = Database("<path to the database file>")
+database.create(webapi)  # This step will take a long time.
 
 # An xarray dataset describing the atmosphere to simulate is required.  This can be a
 # cf-compliant netcdf file or explicitly defined (as below).
@@ -41,7 +48,7 @@ atmosphere = Dataset(
 grid = arange(1., 5000., 0.1)
 
 # A Spectroscopy object controls the absorption coefficient calculation.
-s = Spectroscopy(atmosphere, grid, hapi_config={"api_key": "<your HITRAN api key>"})
+s = Spectroscopy(atmosphere, grid, database)
 spectra = s.compute_absorption()
 spectra.to_netcdf("spectra.nc")
 ```
@@ -52,14 +59,6 @@ in the sections below.
 
 ## Installation
 
-#### HAPI2
-This application depends on HAPI2.  As of now, the maintainers of HAPI2 have decided to
-make that repository private.  **Thus only users who have been granted access to that
-repository can install/run this application.**  We hope the maintainers will open access to
-that repository to the public in the near future.  If you have 2-factor authentication
-active for your account, cloning the HAPI2 repository via HTTPS requires a github
-[personal access token](https://stackoverflow.com/questions/31305945/git-clone-from-github-over-https-with-two-factor-authentication).
-
 #### Installing using pip
 Make sure that you have the most recent version of `pip`, then run
 the following command in the base directory of the repository:
@@ -69,10 +68,24 @@ pip install --upgrade pip # If you need to upgrade pip.
 pip install .
 ```
 
+This command should install the model and the following dependencies:
+
+- matplotlib
+- mt_ckd (https://github.com/GRIPS-code/MT_CKD/tree/fortran-90-and-python)
+- netCDF4
+- numpy
+- scipy
+- Sphinx
+- sphinx-autopackagesummary
+- sphinxcontrib-apidoc
+- sphinxcontrib-napoleon
+- SQLAlchemy
+- xarray
+
 ## High-level API
 This application aims to improve on existing line-by-line radiative transfer models
 by separating the data management and calculation.  Data management is handled by
-a `SpectralDatabase` object, which allows the user to construct a local database
+a `Database` object, which allows the user to construct a local database
 of up-to-date line parameters, continuum coefficients, and cross sections
 without having to explicitly interact with the ascii/data files typically
 needed when using existing line-by-line models.  Absorption spectra calculation
@@ -81,76 +94,49 @@ lines, continua, and cross section models they would like to use.  The details o
 each of these objects are discussed further in the next sections.
 
 #### Spectral database management
-A `SpectralDatabase` object provides an interface to the current
+A `Database` object provides an interface to the current
 [HITRAN](https://hitran.org) database of molecular line parameters.  To create a database
 object of transitions for a specific set of molecules in a specific spectral range, run:
 
 ```python
-from pyLBL import SpectralDatabase
+from pyLBL import Database
 
-database = SpectralDatabase(options, molecules=["H2O", "CO2"], numin=0., numax=5000.)
+# Make a connection to a database.  If the database already exists and you want to
+# just to re-use it, this is the only step you need.
+database = Database("<path to database>")
+
+# If however you have not already populated the database, the data can be downloaded
+# and inserted by running:
+from pyLBL import WebApi
+webapi = WebApi("<your HITRAN API key>")
+database.create(webapi)  # Note that this step will take a long time.
 ```
 
-There are several configurable options that may be passed in to the constructor
-as a dictionary, but only the `api_key` is required.   You must create an account on
-the [HITRAN website](https://hitran.org) in order to get an api key.  A
-more complete set of options includes:
-
-```python
-options = {
-    "api_key": "<your HITRAN api key>", # HITRAN api key associated with your account.
-    "api_version": "v2",
-    "database": "local", # Name of the database (with a .db suffix added).
-    "database_dir": ".", # Directory where the local database will be created.
-    "debug": True,
-    "display_fetch_url": False,
-    "echo": False,
-    "engine": "sqlite", # Type of database to create.
-    "host": "http://hitran.org", # Location of the remote database.
-    "info": "server_info.json",
-    "pass": None,
-    "proxy": None,
-    "tmpdir": "tmp", # Directory were temporary files will be created.
-    "user": "root",
-}
-```
-
-If a local database file (whose path is constructed from `options["database_dir"]`
-and `options["database"]` with the suffix `.db`) already exists, the application
-assumes it has been constructed from a previous run and is reused.  If no such file
-exists, the application will create one.  In the example code above, the `numin`
-and `numax` arguments define the lower and upper bounds of a spectral range
-(in cm<sup>-1</sup>).  Only transitions within this spectral range will be included in the
-local database.
+You must create an account on the [HITRAN website](https://hitran.org) in order to get
+an api key.  It is included as part of your profile on the webite.
 
 #### Absorption calculation
 A `Spectroscopy` object allow users to choose which models are used to calculate the
 molecular lines, various molecular continua, and absorption cross sections.  Currently,
 the supported models are as follows:
 
-|component | models                                                                       |
-|--------- | ---------------------------------------------------------------------------- |
-|lines     | ["grtcode"](https://github.com/menzel-gfdl/pygrt/tree/grips-code)            |
-|continua  | ["mt_ckd"](https://github.com/GRIPS-code/MT_CKD/tree/fortran-90-and-python)  |
+|component | models                                                                             |
+|--------- | ---------------------------------------------------------------------------------- |
+|lines     | ["pyLBL"](https://github.com/GRIPS-code/pyLBL/blob/new_db/pyLBL/spectral_lines.py) |
+|continua  | ["mt_ckd"](https://github.com/GRIPS-code/MT_CKD/tree/fortran-90-and-python)        |
 
-For example, to create a `Spectroscopy` object using GRTcode to calculate the lines
+For example, to create a `Spectroscopy` object using the native pure python spectral lines model
 and the MT-CKD continuum, use:
 
 ```python
 from pyLBL import Spectroscopy
 
-spectroscopy = Spectroscopy(atmosphere, grid, database=database, mapping=mapping,
-                            lines_backend="grtcode", continua_backend="mt_ckd")
+spectroscopy = Spectroscopy(atmosphere, grid, database, mapping=mapping,
+                            lines_backend="pyLBL", continua_backend="mt_ckd")
 ```
 
-Here the `database` argument is optional.  If provided, it must be a `SpectralDatabase`
-object like the one described above.  If not provided, the application will create
-a `SpectralDatabase` object behind-the-scenes for the user that will include all
-gases found in the input `atmosphere` dataset (described below) and spectral range
-defined by the input spectral grid (also described below).  In this case, the
-user must also include the `hapi_config` argument, and pass a dictionary of
-database configuration options (see above) that includes an
-`api_key="<your HITRAN api key>"` entry.
+Here the `database` argument is a `Database` object as described above.  The `atmosphere`,
+`mapping`, and `grid` inputs are described in the following section.
 
 #### User atmospheric inputs
 Atmospheric inputs should be passed in as an xarray `Dataset` object.  As an example,

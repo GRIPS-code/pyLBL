@@ -2,6 +2,8 @@ from sqlalchemy import Column, create_engine, Float, ForeignKey, Integer, select
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 
+from .webapi import NoIsotopologueError, NoTransitionsError
+
 
 Base = declarative_base()
 
@@ -29,8 +31,14 @@ class Database(object):
             webapi: WebApi object.
             molecules: List of string molecule chemical formulae.
         """
-        with Session(self.engine, future=True) as session, session.begin():
-            for molecule in webapi.download_molecules():
+        with Session(self.engine, future=True) as session:
+            all_molecules = webapi.download_molecules()
+            for i, molecule in enumerate(all_molecules):
+
+                # Write out progress.
+                print("Working on molecule {} / {} ({})".format(
+                    i + 1, len(all_molecules), molecule.ordinary_formula)
+                )
 
                 # Support for only using a subset of molecules.
                 if molecules is not "all":
@@ -73,7 +81,15 @@ class Database(object):
                 # Store the transitions.
                 parameters=["global_iso_id", "molec_id", "local_iso_id", "nu", "sw",
                             "gamma_air", "gamma_self", "n_air", "delta_air", "elower"]
-                for transition in webapi.download_transitions(isotopologues, 0., 1.e8, parameters):
+                try:
+                    transitions = webapi.download_transitions(isotopologues, 0., 1.e8, parameters)
+                except NoIsotopologueError:
+                    print("No isotopologues for molecule {}.".format(molecule.ordinary_formula))
+                    continue
+                except NoTransitionsError:
+                    print("No transitions for molecule {}.".format(molecule.ordinary_formula))
+                    continue
+                for transition in transitions:
                     session.add(
                         TransitionTable(
                             global_iso_id=transition.global_iso_id,
@@ -88,6 +104,7 @@ class Database(object):
                             elower=transition.elower
                         )
                     )
+                session.commit()
 
     def _formula(self, session, molecule_id):
         """Helper function that retrieves a molecule's chemical formula.
