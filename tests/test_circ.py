@@ -7,10 +7,10 @@ from tarfile import TarFile
 from uuid import uuid4
 
 from netCDF4 import Dataset as ncDataset
-from numpy import arange, asarray, zeros
-from xarray import DataArray, Dataset
+from numpy import arange, asarray
+from xarray import Dataset
 
-from pyLBL import Database, Spectroscopy
+from pyLBL import Database, Spectroscopy, WebApi
 
 
 info = getLogger(__name__).info
@@ -78,7 +78,9 @@ class Circ(object):
 
 if __name__ == "__main__":
     with Circ(1) as circ:
+        webapi = WebApi(None)
         database = Database("foo.db")
+        database.create(webapi, ["H2O", "CO2", "O3", "N2O", "CO", "CH4", "O2", "N2"])
         grid = arange(1., 3250., 1.)
         s = Spectroscopy(circ.dataset, grid, database)
         absorption_coefficient = s.compute_absorption(output_format="all")

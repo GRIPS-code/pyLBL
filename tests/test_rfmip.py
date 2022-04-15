@@ -9,7 +9,7 @@ from netCDF4 import Dataset as ncDataset
 from numpy import arange, ones
 from xarray import Dataset
 
-from pyLBL import Database, Spectroscopy
+from pyLBL import Database, Spectroscopy, WebApi
 
 
 info = getLogger(__name__).info
