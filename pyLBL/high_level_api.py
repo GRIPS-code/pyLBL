@@ -33,8 +33,10 @@ class MoleculeCache(object):
     """
     def __init__(self, name, grid, lines_database, lines_engine, continua_engine):
         self.gas = lines_engine(*lines_database.gas(name))
-        names = ["{}{}".format(name, x) for x in ["Foreign", "Self"]] \
-                 if name == "H2O" else [name,]
+        if name == "H2O":
+            names = ["{}{}".format(name, x) for x in ["Foreign", "Self"]]
+        else:
+            names = [name, ]
         try:
             self.gas_continua = [continua_engine[x]() for x in names]
         except KeyError:
@@ -52,7 +54,7 @@ class Spectroscopy(object):
         lines_database: Database object controlling the spectral database.
         lines_engine: Object exposed by the current molecular lines backend.
     """
-    def __init__(self, atmosphere, grid, database, mapping=None, 
+    def __init__(self, atmosphere, grid, database, mapping=None,
                  lines_backend="pyLBL", continua_backend="mt_ckd"):
         """Initializes object.
 
@@ -92,7 +94,7 @@ class Spectroscopy(object):
 
     def compute_absorption(self, output_format="all"):
         """Computes absorption coefficient [m-1] at specified wavenumbers given temperature,
-           pressure, and gas concentrations 
+           pressure, and gas concentrations.
 
         Args:
             output_format: String describing how the absorption data should be output.
@@ -113,8 +115,8 @@ class Spectroscopy(object):
             "wavenumber": DataArray(self.grid, dims=("wavenumber",), attrs={"units": "cm-1"}),
         }
         mechanisms = ["lines", "continuum"]
-        dims = list(t.dims) + ["mechanism", "wavenumber",]
-        sizes = [x for x in t.sizes.values()] + [len(mechanisms), self.grid.size,]
+        dims = list(t.dims) + ["mechanism", "wavenumber", ]
+        sizes = [x for x in t.sizes.values()] + [len(mechanisms), self.grid.size, ]
         if output_format == "all":
             output["mechanism"] = DataArray(["lines", "continuum"], dims=("mechanism",))
 

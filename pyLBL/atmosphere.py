@@ -1,14 +1,16 @@
 from re import match
 
 
-_standard_name_to_formula = {"carbon_dioxide": "CO2",
-                             "carbon_monoxide": "CO",
-                             "methane": "CH4",
-                             "nitrogen": "N2",
-                             "nitrous_oxide": "N2O",
-                             "oxygen": "O2",
-                             "ozone": "O3",
-                             "water_vapor": "H2O",}
+_standard_name_to_formula = {
+    "carbon_dioxide": "CO2",
+    "carbon_monoxide": "CO",
+    "methane": "CH4",
+    "nitrogen": "N2",
+    "nitrous_oxide": "N2O",
+    "oxygen": "O2",
+    "ozone": "O3",
+    "water_vapor": "H2O",
+}
 
 
 class Atmosphere(object):
@@ -31,7 +33,7 @@ class Atmosphere(object):
 
         # Find the pressure and temperature variables.
         self.pressure = _find_variable(dataset, "air_pressure") if mapping is None else \
-                        dataset[mapping["play"]]
+                       dataset[mapping["play"]]
         self.temperature = _find_variable(dataset, "air_temperature") if mapping is None \
                            else dataset[mapping["tlay"]]
 
@@ -52,10 +54,11 @@ def _find_variable(dataset, standard_name):
     """
     for var in dataset.data_vars.values():
         try:
-            if var.attrs["standard_name"] == standard_name: return var
+            if var.attrs["standard_name"] == standard_name:
+                return var
         except KeyError:
             continue
-    raise ValueError("{} standard name not found in dataset.".format(standard_name))
+    raise ValueError(f"{standard_name} standard name not found in dataset.")
 
 
 def _gases(dataset):

@@ -1,4 +1,4 @@
-from pkg_resources import get_entry_map, load_entry_point, Requirement
+from pkg_resources import get_entry_map
 from re import match
 
 

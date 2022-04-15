@@ -41,8 +41,9 @@ class Database(object):
                 )
 
                 # Support for only using a subset of molecules.
-                if molecules is not "all":
-                    if molecule.ordinary_formula not in molecules: continue
+                if molecules != "all":
+                    if molecule.ordinary_formula not in molecules:
+                        continue
 
                 # Store the molecule metadata.
                 session.add(
@@ -79,8 +80,8 @@ class Database(object):
                     )
 
                 # Store the transitions.
-                parameters=["global_iso_id", "molec_id", "local_iso_id", "nu", "sw",
-                            "gamma_air", "gamma_self", "n_air", "delta_air", "elower"]
+                parameters = ["global_iso_id", "molec_id", "local_iso_id", "nu", "sw",
+                              "gamma_air", "gamma_self", "n_air", "delta_air", "elower"]
                 try:
                     transitions = webapi.download_transitions(isotopologues, 0., 1.e8, parameters)
                 except NoIsotopologueError:

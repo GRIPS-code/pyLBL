@@ -46,12 +46,14 @@ class WebApi(object):
         Returns:
             String containing the response data.
         """
-        if self.proxy: install_opener(build_opener(ProxyHandler(self.proxy)))
+        if self.proxy:
+            install_opener(build_opener(ProxyHandler(self.proxy)))
         response = urlopen(url)
         data = []
         while True:
             buf = response.read(chunk)
-            if not buf: break
+            if not buf:
+                break
             data.append(buf.decode("utf-8"))
         return "".join(data)
 
@@ -74,7 +76,7 @@ class WebApi(object):
         """
         query = None if pattern is None else Query(name__icontains=pattern)
         return [Struct(**x) for x in
-            self._download_section("parameter-metas", query)["content"]["data"]]
+                self._download_section("parameter-metas", query)["content"]["data"]]
 
     def _download_section(self, api_section, query=None, chunk=1024*1024):
         """Downloads data from the hitran.org website.
@@ -88,8 +90,10 @@ class WebApi(object):
             JSON string containing the response data.
         """
         url = "/".join([self.host, "api", self.api_version, self.api_key, api_section])
-        if query is not None: url = "?".join([url, query.string])
-        if self.proxy: install_opener(build_opener(ProxyHandler(self.proxy)))
+        if query is not None:
+            url = "?".join([url, query.string])
+        if self.proxy:
+            install_opener(build_opener(ProxyHandler(self.proxy)))
         return loads(self._download(url, chunk))
 
     def _download_server_info(self):
@@ -129,7 +133,8 @@ class WebApi(object):
         Returns:
             List of Struct objects containing the response data.
         """
-        if type(molecules) not in [list, tuple]: molecules = [molecules,]
+        if type(molecules) not in [list, tuple]:
+            molecules = [molecules, ]
         ids = [x.id for x in molecules]
         return [Struct(**x) for x in self._download_section("isotopologues",
             Query(molecule_id__in=ids))["content"]["data"]]
@@ -146,27 +151,30 @@ class WebApi(object):
         Returns:
             List of Struct objects containing the response data.
         """
-        if type(isotopologues) not in [list, tuple]: isotopologues = [isotopologues,]
+        if type(isotopologues) not in [list, tuple]:
+            isotopologues = [isotopologues, ]
         ids = [x.id for x in isotopologues]
-        if not ids: raise NoIsotopologueError("no isotopologues present.")
+        if not ids:
+            raise NoIsotopologueError("no isotopologues present.")
         if parameters is None:
             parameters = [x.name for x in self.parameters][:22]
         query = Query(iso_ids_list=ids, numin=numin, numax=numax, head=False,
                       fixwidth=0, request_params=",".join(parameters))
         try:
             name = self._download_section("transitions", query)["content"]["data"]
-        except HTTPError as e:
+        except HTTPError:
             raise NoTransitionsError("no transitions found for {}.".format(
                 isotopologues[0].molecule_alias))
         data = self._download_file(self.transition_directory, name)
 
-        #Parse the file.
+        # Parse the file.
         transitions = []
         type_mapping = {"float": float, "int": int, "str": str}
         types = [type_mapping[x.type] for x in self.parameters]
         for line in data.split("\n"):
             line = line.strip()
-            if not line: continue
+            if not line:
+                continue
             try:
                 transitions.append(Struct(**{x: y(z) for x, y, z in
                                    zip(parameters, types, line.split(","))}))
@@ -183,7 +191,8 @@ class WebApi(object):
         Returns:
             List of Struct objects containing the response data.
         """
-        if type(molecules) not in [list, tuple]: molecules = [molecules,]
+        if type(molecules) not in [list, tuple]:
+            molecules = [molecules, ]
         ids = [x.id for x in molecules]
         query = Query(molecule_id__in=ids)
         bands = self._download_section("cross-sections", query)["content"]["data"]
@@ -225,8 +234,10 @@ class Query(object):
     @staticmethod
     def process(val):
         """Process argument value and convert to string."""
-        if type(val) in [bool, float, int, str]: return str(val)
-        if type(val) in [list, set, tuple]: return ",".join(str(v) for v in val)
+        if type(val) in [bool, float, int, str]:
+            return str(val)
+        if type(val) in [list, set, tuple]:
+            return ",".join(str(v) for v in val)
         raise TypeError("bad type for query: '{}'".format(val))
 
 

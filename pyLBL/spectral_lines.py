@@ -1,13 +1,11 @@
-from math import floor
-
-from numpy import abs, arange, asarray, concatenate, exp, flip, interp, log, min, pi, power, \
+from numpy import abs, asarray, exp, log, min, pi, power, \
                   searchsorted, sqrt, zeros
 from scipy.special import wofz
 
 from .tips import TIPS_REFERENCE_TEMPERATURE, TotalPartitionFunction
 
 
-avogadro = 6.0221409e23 # Avogadro's constant [mol-1].
+avogadro = 6.0221409e23  # Avogadro's constant [mol-1].
 boltzmann = 1.380658e-16  # Boltzmann constant [erg K-1].
 cm_to_m = 0.01  # [m cm-1].
 c2 = -1.4387768795689562  # (hc/k) [K cm].
@@ -34,6 +32,7 @@ class SpectralLines(object):
         v: Transition wavenumber.
     """
     parameters = ["d_air", "en", "gamma_air", "gamma_self", "iso", "n_air", "s", "v"]
+
     def __init__(self, transitions):
         """Converts from HAPI transitions objects to numpy arrays.
 
@@ -144,9 +143,14 @@ class Gas(object):
         self.mass = asarray(mass)
         self.transitions = SpectralLines(transitions)
         self.q = TotalPartitionFunction(formula)
-        self.s = initial_strength_correction(self.transitions.s, self.q,
-            TIPS_REFERENCE_TEMPERATURE, self.transitions.iso, self.transitions.en,
-            self.transitions.v)
+        self.s = initial_strength_correction(
+                     self.transitions.s,
+                     self.q,
+                     TIPS_REFERENCE_TEMPERATURE,
+                     self.transitions.iso,
+                     self.transitions.en,
+                     self.transitions.v
+                 )
 
     def absorption_coefficient(self, temperature, pressure, volume_mixing_ratio, grid,
                                continuum="mt-ckd"):
@@ -161,12 +165,24 @@ class Gas(object):
         Returns:
             Absorption coefficients [m2].
         """
-        return line_profile(self.transitions.v, self.s, self.q, self.transitions.iso,
-                            self.transitions.en, self.transitions.d_air, 
-                            self.transitions.n_air, self.transitions.n_air,
-                            self.transitions.gamma_air, self.transitions.gamma_self,
-                            self.mass, temperature, pressure*pa_to_atm,
-                            volume_mixing_ratio, grid, remove_pedestal=continuum == "mt-cdk")
+        return line_profile(
+                   self.transitions.v,
+                   self.s,
+                   self.q,
+                   self.transitions.iso,
+                   self.transitions.en,
+                   self.transitions.d_air,
+                   self.transitions.n_air,
+                   self.transitions.n_air,
+                   self.transitions.gamma_air,
+                   self.transitions.gamma_self,
+                   self.mass,
+                   temperature,
+                   pressure*pa_to_atm,
+                   volume_mixing_ratio,
+                   grid,
+                   remove_pedestal=continuum == "mt-cdk",
+               )
 
 
 def pressure_shift_transition_wavenumber(line_center, delta_air, pressure):
@@ -251,5 +267,5 @@ def doppler_broadened_halfwidth(temperature, mass, transition_wavenumber):
         Doppler-broadened line halfwidth [cm-1].
     """
     m = mass/avogadro  # Mass/Avogadro's number [g].
-    return sqrt_log2*transition_wavenumber*sqrt(2.*boltzmann*temperature/ \
+    return sqrt_log2*transition_wavenumber*sqrt(2.*boltzmann*temperature /
         (m*light_speed*light_speed))
