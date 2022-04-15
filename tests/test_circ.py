@@ -10,7 +10,7 @@ from netCDF4 import Dataset as ncDataset
 from numpy import arange, asarray, zeros
 from xarray import DataArray, Dataset
 
-from pyLBL import Spectroscopy
+from pyLBL import Database, Spectroscopy
 
 
 info = getLogger(__name__).info
@@ -67,7 +67,7 @@ class Circ(object):
             for key, value in vmr.items():
                 vars_.update({key: _variable(value, "mol mol-1",
                                              "mole_fraction_of_{}_in_air".format(names[key]))})
-        self.dataset = Dataset(data_vars=vars_)
+            self.dataset = Dataset(data_vars=vars_)
 
     def __enter__(self):
         return self
@@ -78,8 +78,8 @@ class Circ(object):
 
 if __name__ == "__main__":
     with Circ(1) as circ:
+        database = Database("foo.db")
         grid = arange(1., 3250., 1.)
-        s = Spectroscopy(circ.dataset, grid,
-                         hapi_config={"api_key": None})
+        s = Spectroscopy(circ.dataset, grid, database)
         absorption_coefficient = s.compute_absorption(output_format="all")
         absorption_coefficient.to_netcdf("results.nc")

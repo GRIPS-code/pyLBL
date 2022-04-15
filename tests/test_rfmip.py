@@ -1,20 +1,22 @@
-from ftplib import FTP
 from logging import getLogger
 from os import mkdir
 from os.path import join
 from shutil import rmtree
-from tarfile import TarFile
-from tempfile import TemporaryDirectory
 from urllib.request import urlopen
 from uuid import uuid4
 
-from numpy import arange, zeros
-from xarray import DataArray, Dataset, open_dataset
+from netCDF4 import Dataset as ncDataset
+from numpy import arange, ones
+from xarray import Dataset
 
-from pyLBL import Spectroscopy
+from pyLBL import Database, Spectroscopy
 
 
 info = getLogger(__name__).info
+
+
+def _variable(data, units, standard_name):
+    return (["column", "layer"], data, {"units": units, "standard_name": standard_name})
 
 
 class Rfmip(object):
@@ -40,39 +42,35 @@ class Rfmip(object):
                  "N2": "nitrogen_GM",
                  "N2O": "nitrous_oxide_GM",
                  "O2": "oxygen_GM",
-                 "O3": "ozone",
-                 "pressure": "pres_layer",
-                 "temperature": "temp_layer"}
+                 "O3": "ozone"}
         address = "/".join(["http://aims3.llnl.gov/thredds/fileServer/user_pub_work",
                             "input4MIPs/CMIP6/RFMIP/UColorado/UColorado-RFMIP-1-2/atmos/fx",
                             "multiple/none/v20190401",
                             "multiple_input4MIPs_radiation_RFMIP_UColorado-RFMIP-1-2_none.nc"])
-
         self.tmp = str(uuid4()); path = "input.nc"
         mkdir(self.tmp)
         with open(join(self.tmp, path), "wb") as datafile:
             datafile.write(urlopen(address).read())
-        data = {}
-        with open_dataset(join(self.tmp, path)) as dataset:
-            t = dataset[names["temperature"]]
-            sizes = tuple([x for x in t.sizes.values()])
-            for key, name in names.items():
-                if name.endswith("_GM"):
-                    varname = "vmr_{}".format(key)
-                    data[varname] = DataArray(zeros(sizes), dims=t.dims)
-                    for i in range(sizes[0]):
-                        data[varname].values[i, ...] = dataset[name].data[i] * \
-                                                       float(dataset[name].attrs["units"])
-                elif key == "pressure":
-                    data[key] = DataArray(zeros(sizes), dims=t.dims)
-                    for i in range(sizes[0]):
-                        data[key].values[i, ...] = dataset[name].data[...]
-                elif key == "H2O" or key == "O3":
-                    data["vmr_{}".format(key)] = dataset[name]
+
+        with ncDataset(join(self.tmp, path), "r") as dataset:
+            temperature = dataset.variables["temp_layer"][case - 1, ...]
+            pressure = dataset.variables["pres_layer"]
+            vmr = {}
+            for key, value in names.items():
+                units = float(dataset.variables[value].getncattr("units"))
+                if value.endswith("_GM"):
+                    vmr[key] = ones(pressure.shape)*dataset.variables[value][case - 1]*units
                 else:
-                    data[key] = dataset[name]
-        self.dataset = Dataset(data)
-        print(self.dataset)
+                    vmr[key] = dataset.variables[value][case - 1, ...]*units
+            vars_ = {
+                "play": _variable(pressure, "Pa", "air_pressure"),
+                "tlay": _variable(temperature, "K", "air_temperature"),
+            }
+            for key, value in vmr.items():
+                vars_.update({key: _variable(value, "mol mol-1",
+                                             "mole_fraction_of_{}_in_air".format(names[key].strip("_GM")))})
+            coords = {"column": ones(100), "layer": ones(60)}
+            self.dataset = Dataset(data_vars=vars_, coords=coords)
 
     def __enter__(self):
         return self
@@ -80,16 +78,13 @@ class Rfmip(object):
     def __exit__(self, exception_type, exception_value, traceback):
         rmtree(self.tmp)
 
-    @property
-    def molecules(self):
-        return [x.split("_")[-1] for x in self.dataset.data_vars.keys()
-                if x.startswith("vmr_")]
-
 
 if __name__ == "__main__":
     with Rfmip() as rfmip:
+        webapi = WebApi(None)
+        database = Database("foo.db")
+        database.create(webapi, ["H2O", "CO2", "O3", "N2O", "CO", "CH4", "O2", "N2"])
         grid = arange(1., 3250., 1.)
-        spectroscopy = Spectroscopy(rfmip.molecules, "test.db")
-        spectroscopy.load_spectral_inputs()
-        absorption_coefficient = spectroscopy.compute_absorption(rfmip.dataset, grid)
+        spectroscopy = Spectroscopy(rfmip.dataset, grid, database)
+        absorption_coefficient = spectroscopy.compute_absorption()
         absorption_coefficient.to_netcdf("results.nc")
