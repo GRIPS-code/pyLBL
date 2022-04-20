@@ -34,11 +34,11 @@ def create_circ_xarray_dataset():
 
 if __name__ == "__main__":
     from numpy import arange
-    from pyLBL import Database, Spectroscopy, WebApi
+    from pyLBL import Database, Spectroscopy, HitranWebApi
 
-    webapi = WebApi(None)
+    webapi = HitranWebApi("")
     database = Database("foo.db")
-    database.create(webapi, ["H2O", "CO2", "O3", "N2O", "CO", "CH4", "O2", "N2"])
+    database.create(webapi)
     dataset = create_circ_xarray_dataset()
     grid = arange(1., 5000., 1.)
     s = Spectroscopy(dataset, grid, database)

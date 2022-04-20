@@ -3,7 +3,7 @@ from urllib.error import HTTPError
 from urllib.request import build_opener, install_opener, ProxyHandler, urlopen
 
 
-class WebApi(object):
+class HitranWebApi(object):
     """Controls access to HITRAN's web API.
 
     Attributes:

@@ -132,17 +132,18 @@ def line_profile(v, s, q, iso, en, d_air, n_air, n_self, gamma_air, gamma_self,
 
 
 class Gas(object):
-    def __init__(self, formula, mass, transitions):
+    def __init__(self, formula, mass, transitions, total_partition_function):
         """Initializes object.
 
         Args:
             formula: String chemical formula.
             mass: List of isotopologue masses.
             transitions: List of TransitionTable objects.
+            total_partition_function: TotalPartitionFunction object.
         """
         self.mass = asarray(mass)
         self.transitions = SpectralLines(transitions)
-        self.q = TotalPartitionFunction(formula)
+        self.q = total_partition_function
         self.s = initial_strength_correction(
                      self.transitions.s,
                      self.q,

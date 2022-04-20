@@ -1,8 +1,12 @@
+from sys import stderr
+
+from numpy import asarray, reshape
 from sqlalchemy import Column, create_engine, Float, ForeignKey, Integer, select, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 
-from .webapi import NoIsotopologueError, NoTransitionsError
+from .tips import TotalPartitionFunction
+from .webapi import NoIsotopologueError, NoMoleculeError, NoTransitionsError, TipsWebApi
 
 
 Base = declarative_base()
@@ -24,26 +28,31 @@ class Database(object):
         self.engine = create_engine(f"sqlite+pysqlite:///{path}", echo=echo, future=True)
         Base.metadata.create_all(self.engine)
 
-    def create(self, webapi, molecules="all"):
-        """Downloads data from HITRAN and inserts it into the database tables.
+    def create(self, hitran_webapi, molecules="all", tips_webapi=None):
+        """Downloads data from HITRAN and TIPS and inserts it into the database tables.
 
         Args:
-            webapi: WebApi object.
+            hitran_webapi: HitranWebApi object.
             molecules: List of string molecule chemical formulae.
+            tips_webapi: TipsWebApi object.
         """
-        with Session(self.engine, future=True) as session:
-            all_molecules = webapi.download_molecules()
-            for i, molecule in enumerate(all_molecules):
+        if tips_webapi is None:
+            tips_webapi = TipsWebApi()
 
-                # Write out progress.
-                print("Working on molecule {} / {} ({})".format(
-                    i + 1, len(all_molecules), molecule.ordinary_formula)
-                )
+        with Session(self.engine, future=True) as session:
+            all_molecules = hitran_webapi.download_molecules()
+            num_molecules = len(all_molecules) if molecules == "all" else len(molecules)
+            for i, molecule in enumerate(all_molecules):
 
                 # Support for only using a subset of molecules.
                 if molecules != "all":
                     if molecule.ordinary_formula not in molecules:
                         continue
+
+                # Write out progress.
+                print("Working on molecule {} / {} ({})".format(
+                    i + 1, num_molecules, molecule.ordinary_formula)
+                )
 
                 # Store the molecule metadata.
                 session.add(
@@ -66,7 +75,7 @@ class Database(object):
                     )
 
                 # Store isotopologues.
-                isotopologues = webapi.download_isotopologues(molecule)
+                isotopologues = hitran_webapi.download_isotopologues(molecule)
                 for isotopologue in isotopologues:
                     session.add(
                         IsotopologueTable(
@@ -83,12 +92,12 @@ class Database(object):
                 parameters = ["global_iso_id", "molec_id", "local_iso_id", "nu", "sw",
                               "gamma_air", "gamma_self", "n_air", "delta_air", "elower"]
                 try:
-                    transitions = webapi.download_transitions(isotopologues, 0., 1.e8, parameters)
+                    transitions = hitran_webapi.download_transitions(isotopologues, 0., 1.e8, parameters)
                 except NoIsotopologueError:
-                    print("No isotopologues for molecule {}.".format(molecule.ordinary_formula))
+                    print(f"No isotopologues for molecule {molecule.ordinary_formula}.")
                     continue
                 except NoTransitionsError:
-                    print("No transitions for molecule {}.".format(molecule.ordinary_formula))
+                    print(f"No transitions for molecule {molecule.ordinary_formula}.")
                     continue
                 for transition in transitions:
                     session.add(
@@ -105,6 +114,23 @@ class Database(object):
                             elower=transition.elower
                         )
                     )
+
+                # Store the TIPS data.
+                try:
+                    temperature, data = tips_webapi.download(molecule.ordinary_formula)
+                except NoMoleculeError:
+                    print(f"No molecule {molecule.ordinary_formula} found in TIPS database.")
+                    continue
+                for x in range(data.shape[0]):
+                    for y in range(data.shape[1]):
+                        session.add(
+                            TipsTable(
+                                molecule_id=molecule.id,
+                                isotopologue_id=x,
+                                temperature=temperature[y],
+                                data=data[x, y],
+                            )
+                        )
                 session.commit()
 
     def _formula(self, session, molecule_id):
@@ -185,7 +211,30 @@ class Database(object):
             formula = self._formula(session, id)
             mass = self._mass(session, id)
             transitions = self._transitions(session, id)
-            return formula, mass, transitions
+            return formula, mass, transitions, TotalPartitionFunction(name, *self.tips(name))
+
+    def tips(self, name):
+        """Queries the database for all parameters needed to run TIPS.
+
+        Args:
+            name: String molecule alias.
+
+        Returns:
+            temperature: Numpy array of temperatures.
+            data: Numpy array of data values.
+        """
+        with Session(self.engine, future=True) as session:
+            id = self._molecule_id(session, name)
+            stmt = select(TipsTable).filter_by(molecule_id=id)
+            result = [x[0] for x in session.execute(stmt).all()]
+            data, temperature = [], []
+            for value in result:
+                data.append(value.data)
+                if value.temperature not in temperature:
+                    temperature.append(value.temperature)
+            data = reshape(asarray(data), (len(data)//len(temperature), len(temperature)))
+            temperature = asarray(temperature)
+            return temperature, data
 
 
 class MoleculeTable(Base):
@@ -230,3 +279,22 @@ class TransitionTable(Base):
     n_air = Column("n_air", Float)
     delta_air = Column("delta_air", Float)
     elower = Column("elower", Float)
+
+
+class TipsTable(Base):
+    """TIPS data table schema."""
+    __tablename__ = "tips"
+    id = Column("id", Integer, primary_key=True, autoincrement=True)
+    molecule_id = Column("molecule_id", Integer, ForeignKey(MoleculeTable.id))
+    isotopologue_id = Column("isotopologue_id", Integer)
+    temperature = Column("temperature", Float)
+    data = Column("data", Float)
+
+
+class MetadataTable(Base):
+    """Table that describes when data was downloaded."""
+    __tablename__ = "metadata"
+    id = Column("id", Integer, primary_key=True, autoincrement=True)
+    molecule_id = Column("molecule_id", Integer, ForeignKey(MoleculeTable.id))
+    database = Column("database", String)
+    time = Column("time", String)
