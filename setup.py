@@ -8,7 +8,7 @@ setup(
     author_email="",
     description="Line-by-line absorption calculators.",
     url="",
-    python_requires=">=3.5",
+    python_requires=">=3.6",
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -23,6 +23,7 @@ setup(
         "sqlalchemy",
         "xarray",
         "mt_ckd @ git+http://github.com/GRIPS-code/MT_CKD@fortran-90-and-python",
+        "arts_crossfit @ git+http://github.com/menzel-gfdl/arts-crossfit@make-package",
 
         # To build documentation.
         "Sphinx",
@@ -48,5 +49,6 @@ setup(
                    "O2Continuum=mt_ckd.oxygen:OxygenContinuum",
                    "O3Continuum=mt_ckd.ozone:OzoneContinuum",
         ],
+        "arts_crossfit": ["CrossSection=arts_crossfit.cross_section:CrossSection"],
     },
 )

@@ -1,10 +1,12 @@
-from xarray import DataArray, Dataset
-
 from numpy import sum as npsum
 from numpy import unravel_index, zeros
+from xarray import DataArray, Dataset
 
 from .atmosphere import Atmosphere
-from .low_level_api import continua, molecular_lines
+from .database import AliasNotFoundError, CrossSectionNotFoundError, \
+                      IsotopologuesNotFoundError, TipsDataNotFoundError, \
+                      TransitionsNotFoundError
+from .low_level_api import continua, cross_sections, molecular_lines
 
 
 kb = 1.38064852e-23  # Boltzmann constant [J K-1].
@@ -31,8 +33,13 @@ class MoleculeCache(object):
         gas: Object controlling the current lines backend plugin.
         gas_continua: List of objects controlling the curret continua backend plugin.
     """
-    def __init__(self, name, grid, lines_database, lines_engine, continua_engine):
-        self.gas = lines_engine(*lines_database.gas(name))
+    def __init__(self, name, grid, lines_database, lines_engine, continua_engine,
+                 cross_sections_engine):
+        try:
+            self.gas = lines_engine(*lines_database.gas(name))
+        except (AliasNotFoundError, IsotopologuesNotFoundError,
+                TipsDataNotFoundError, TransitionsNotFoundError):
+            self.gas = None
         if name == "H2O":
             names = ["{}{}".format(name, x) for x in ["Foreign", "Self"]]
         else:
@@ -41,6 +48,10 @@ class MoleculeCache(object):
             self.gas_continua = [continua_engine[x]() for x in names]
         except KeyError:
             self.gas_continua = None
+        try:
+            self.cross_section = cross_sections_engine(name, lines_database.arts_crossfit(name))
+        except (AliasNotFoundError, CrossSectionNotFoundError):
+            self.cross_section = None
 
 
 class Spectroscopy(object):
@@ -55,7 +66,8 @@ class Spectroscopy(object):
         lines_engine: Object exposed by the current molecular lines backend.
     """
     def __init__(self, atmosphere, grid, database, mapping=None,
-                 lines_backend="pyLBL", continua_backend="mt_ckd"):
+                 lines_backend="pyLBL", continua_backend="mt_ckd",
+                 cross_sections_backend="arts_crossfit"):
         """Initializes object.
 
         Example::
@@ -82,6 +94,7 @@ class Spectroscopy(object):
         self.lines_database = database
         self.lines_engine = molecular_lines[lines_backend]
         self.continua_engine = continua[continua_backend]
+        self.cross_sections_engine = cross_sections[cross_sections_backend]
         self.cache = {}
 
     def list_molecules(self):
@@ -114,11 +127,11 @@ class Spectroscopy(object):
         output = {
             "wavenumber": DataArray(self.grid, dims=("wavenumber",), attrs={"units": "cm-1"}),
         }
-        mechanisms = ["lines", "continuum"]
+        mechanisms = ["lines", "continuum", "cross_section"]
         dims = list(t.dims) + ["mechanism", "wavenumber", ]
         sizes = [x for x in t.sizes.values()] + [len(mechanisms), self.grid.size, ]
         if output_format == "all":
-            output["mechanism"] = DataArray(["lines", "continuum"], dims=("mechanism",))
+            output["mechanism"] = DataArray(mechanisms, dims=("mechanism",))
 
         # Calculate the absorption for each molecule at each atmospheric grid point.
         beta = {}
@@ -132,7 +145,8 @@ class Spectroscopy(object):
             except KeyError:
                 # If not already cached, then cache it.
                 data = MoleculeCache(name, self.grid, self.lines_database,
-                                     self.lines_engine, self.continua_engine)
+                                     self.lines_engine, self.continua_engine,
+                                     self.cross_sections_engine)
                 self.cache[name] = data
             for i in range(t.data.size):
                 vmr = {x: y.data.flat[i] for x, y in self.atmosphere.gases.items()}
@@ -141,10 +155,11 @@ class Spectroscopy(object):
                 j = unravel_index(i, t.data.shape)
 
                 # Calculate lines.
-                k = data.gas.absorption_coefficient(t.data.flat[i], p.data.flat[i],
-                                                    mole_fraction.data.flat[i], self.grid)
-                indices = tuple(list(j) + [0, slice(None)])
-                beta[varname].values[indices] = n*k[:]
+                if data.gas is not None:
+                    k = data.gas.absorption_coefficient(t.data.flat[i], p.data.flat[i],
+                                                        mole_fraction.data.flat[i], self.grid)
+                    indices = tuple(list(j) + [0, slice(None)])
+                    beta[varname].values[indices] = n*k[:]
 
                 # Calculate continua.
                 if data.gas_continua is not None:
@@ -152,6 +167,13 @@ class Spectroscopy(object):
                     for continuum in data.gas_continua:
                         k = continuum.spectra(t.data.flat[i], p.data.flat[i], vmr, self.grid)
                         beta[varname].values[indices] += k[:]
+
+                # Calculate the cross section.
+                if data.cross_section is not None:
+                    k = data.cross_section.absorption_coefficient(self.grid, t.data.flat[i],
+                                                                  p.data.flat[i])
+                    indices = tuple(list(j) + [2, slice(None)])
+                    beta[varname].values[indices] = n*k[:]
 
         # Combine the output into the desired form.
         if output_format == "all":

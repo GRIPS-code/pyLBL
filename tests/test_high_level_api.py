@@ -13,6 +13,8 @@ def create_circ_xarray_dataset():
     xch4 = [1.700002e-06,]
     xo2 = [0.208996,]
     xn2 = [0.781,]
+    xcfc11 = [2.783e-10,]
+    xcfc12 = [5.027e-10,]
     return Dataset(
         data_vars={
             "play": variable(pressure, "Pa", "air_pressure"),
@@ -25,6 +27,8 @@ def create_circ_xarray_dataset():
             "xch4": variable(xch4, "mol mol-1", "mole_fraction_of_methane_in_air"),
             "xo2": variable(xo2, "mol mol-1", "mole_fraction_of_oxygen_in_air"),
             "xn2": variable(xn2, "mol mol-1", "mole_fraction_of_nitrogen_in_air"),
+            "xcfc11": variable(xcfc11, "mol mol-1", "mole_fraction_of_cfc11_in_air"),
+            "xcfc12": variable(xcfc12, "mol mol-1", "mole_fraction_of_cfc12_in_air"),
          },
          coords={
              "layer": (["z",], [1,])

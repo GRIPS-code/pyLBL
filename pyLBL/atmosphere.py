@@ -4,6 +4,8 @@ from re import match
 _standard_name_to_formula = {
     "carbon_dioxide": "CO2",
     "carbon_monoxide": "CO",
+    "cfc11": "CFC11",
+    "cfc12": "CFC12",
     "methane": "CH4",
     "nitrogen": "N2",
     "nitrous_oxide": "N2O",

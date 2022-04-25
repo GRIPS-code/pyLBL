@@ -1,5 +1,10 @@
+from os import listdir
+from os.path import abspath, join
+from pathlib import Path
+from re import match
 from sys import stderr
 
+from arts_crossfit.webapi import download
 from numpy import asarray, reshape
 from sqlalchemy import Column, create_engine, Float, ForeignKey, Integer, select, String
 from sqlalchemy.ext.declarative import declarative_base
@@ -25,16 +30,19 @@ class Database(object):
             path: Path to database.
             echo: Print database SQL commands.
         """
+        self.cross_section_directory = None
         self.engine = create_engine(f"sqlite+pysqlite:///{path}", echo=echo, future=True)
         Base.metadata.create_all(self.engine)
 
-    def create(self, hitran_webapi, molecules="all", tips_webapi=None):
+    def create(self, hitran_webapi, molecules="all", tips_webapi=None,
+               cross_section_directory=".cross-sections"):
         """Downloads data from HITRAN and TIPS and inserts it into the database tables.
 
         Args:
             hitran_webapi: HitranWebApi object.
             molecules: List of string molecule chemical formulae.
             tips_webapi: TipsWebApi object.
+            cross_section_directory: Directory to download cross sections to.
         """
         if tips_webapi is None:
             tips_webapi = TipsWebApi()
@@ -60,7 +68,7 @@ class Database(object):
                         id=molecule.id,
                         stoichiometric_formula=molecule.stoichiometric_formula,
                         ordinary_formula=molecule.ordinary_formula,
-                        common_name=molecule.common_name
+                        common_name=molecule.common_name,
                     )
                 )
 
@@ -70,7 +78,7 @@ class Database(object):
                     session.add(
                         MoleculeAliasTable(
                             alias=alias,
-                            molecule=molecule.id
+                            molecule=molecule.id,
                         )
                     )
 
@@ -84,7 +92,7 @@ class Database(object):
                             isoid=isotopologue.isoid,
                             iso_name=isotopologue.iso_name,
                             abundance=isotopologue.abundance,
-                            mass=isotopologue.mass
+                            mass=isotopologue.mass,
                         )
                     )
 
@@ -111,7 +119,7 @@ class Database(object):
                             gamma_self=transition.gamma_self,
                             n_air=transition.n_air,
                             delta_air=transition.delta_air,
-                            elower=transition.elower
+                            elower=transition.elower,
                         )
                     )
 
@@ -132,6 +140,53 @@ class Database(object):
                             )
                         )
                 session.commit()
+
+        # Add in the ARTS Crossfit data files.
+        self.cross_section_directory = cross_section_directory
+        Path(self.cross_section_directory).mkdir(parents=True, exist_ok=True)
+        download(self.cross_section_directory)
+        with Session(self.engine, future=True) as session:
+            for path in listdir(join(self.cross_section_directory, "coefficients")):
+                regex = match(r"([A-Za-z0-9]+).nc", path)
+                if regex:
+                    formula = regex.group(1)
+                    try:
+                        molecule_id = self._molecule_id(session, formula)
+                    except AliasNotFoundError:
+                        # Add molecule to the MoleculeTable.
+                        session.add(
+                            MoleculeTable(
+                                stoichiometric_formula=formula,
+                                ordinary_formula=formula,
+                                common_name=formula,
+                            )
+                        )
+                        session.commit()
+                        # Query for the molecule id.
+                        stmt = select(MoleculeTable.id).filter_by(ordinary_formula=formula)
+                        molecule_id = session.execute(stmt).all()[0][0]
+                        # Add molecule to the MoleculeAliasTable.
+                        session.add(
+                            MoleculeAliasTable(
+                                alias=formula,
+                                molecule=molecule_id,
+                            )
+                        )
+                        session.commit()
+                    # Store path to the cross section data file.
+                    session.add(
+                        ArtsCrossFitTable(
+                            molecule_id=molecule_id,
+                            path=abspath(
+                                     join(
+                                         self.cross_section_directory,
+                                         "coefficients",
+                                         path
+                                     )
+                                 ),
+                        )
+                    )
+                    session.commit()
 
     def _formula(self, session, molecule_id):
         """Helper function that retrieves a molecule's chemical formula.
@@ -157,7 +212,12 @@ class Database(object):
             List of float isotopologue masses.
         """
         stmt = select(IsotopologueTable.mass).filter_by(molecule_id=molecule_id)
-        return [x[0] for x in session.execute(stmt).all()]
+        result = [x[0] for x in session.execute(stmt).all()]
+        if not result:
+            raise IsotopologuesNotFoundError(
+                      f"isotopologues not found for molecule {molecule_id}."
+                  )
+        return result
 
     def _molecule_id(self, session, name):
         """Helper function that retrieves a molecules id.
@@ -170,7 +230,10 @@ class Database(object):
             MoleculeTable integer primary key.
         """
         stmt = select(MoleculeAliasTable.molecule).filter_by(alias=name)
-        return session.execute(stmt).all()[0][0]
+        try:
+            return session.execute(stmt).all()[0][0]
+        except IndexError:
+            raise AliasNotFoundError(f"{name} not found in database.")
 
     def _transitions(self, session, molecule_id):
         """Helper function that retrieves a molecule's transitions.
@@ -183,7 +246,12 @@ class Database(object):
             List of TransitionTable objects.
         """
         stmt = select(TransitionTable).filter_by(molecule_id=molecule_id)
-        return [x[0] for x in session.execute(stmt).all()]
+        result = [x[0] for x in session.execute(stmt).all()]
+        if not result:
+            raise TransitionsNotFoundError(
+                      f"transitions not found for molecule {molecule_id}."
+                  )
+        return result
 
     def molecules(self):
         """Queries the database for all molecules.
@@ -227,6 +295,8 @@ class Database(object):
             id = self._molecule_id(session, name)
             stmt = select(TipsTable).filter_by(molecule_id=id)
             result = [x[0] for x in session.execute(stmt).all()]
+            if not result:
+                raise TipsDataNotFoundError(f"no tips data for {name}.")
             data, temperature = [], []
             for value in result:
                 data.append(value.data)
@@ -235,6 +305,16 @@ class Database(object):
             data = reshape(asarray(data), (len(data)//len(temperature), len(temperature)))
             temperature = asarray(temperature)
             return temperature, data
+
+    def arts_crossfit(self, name):
+        """Queries the database for all parameters needed to run ARTS Crossfit."""
+        with Session(self.engine, future=True) as session:
+            id = self._molecule_id(session, name)
+            stmt = select(ArtsCrossFitTable).filter_by(molecule_id=id)
+            try:
+                return session.execute(stmt).all()[0][0].path
+            except IndexError:
+                raise CrossSectionNotFoundError(f"No cross sections for {name}.")
 
 
 class MoleculeTable(Base):
@@ -291,6 +371,14 @@ class TipsTable(Base):
     data = Column("data", Float)
 
 
+class ArtsCrossFitTable(Base):
+    """Arts-crossfit table schema."""
+    __tablename__ = "artscrossfit"
+    id = Column("id", Integer, primary_key=True, autoincrement=True)
+    molecule_id = Column("molcule_id", Integer, ForeignKey(MoleculeTable.id))
+    path = Column("path", String)
+
+
 class MetadataTable(Base):
     """Table that describes when data was downloaded."""
     __tablename__ = "metadata"
@@ -298,3 +386,23 @@ class MetadataTable(Base):
     molecule_id = Column("molecule_id", Integer, ForeignKey(MoleculeTable.id))
     database = Column("database", String)
     time = Column("time", String)
+
+
+class AliasNotFoundError(BaseException):
+    pass
+
+
+class TipsDataNotFoundError(BaseException):
+    pass
+
+
+class IsotopologuesNotFoundError(BaseException):
+    pass
+
+
+class TransitionsNotFoundError(BaseException):
+    pass
+
+
+class CrossSectionNotFoundError(BaseException):
+    pass
