@@ -1,0 +1,29 @@
+# This workflow will install Python dependencies and run a database creation and simple
+# absorption calculation test.
+
+name: pyLBL
+
+on: [push]
+
+jobs:
+  unit_test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.6
+      uses: actions/setup-python@v3
+      with:
+        python-version: 3.6
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install .
+    - name: Create spectral database
+      env:
+        HITRAN_API_KEY: ${{ secrets.HITRAN_API_KEY}}
+      run: |
+        python3 tests/test_create_database.py test.db
+    - name: Calculate absorption
+      run: |
+        python3 tests/test_absorption_calculation test.db
+
