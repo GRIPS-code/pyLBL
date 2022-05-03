@@ -25,5 +25,5 @@ jobs:
         python3 tests/test_create_database.py test.db
     - name: Calculate absorption
       run: |
-        python3 tests/test_absorption_calculation test.db
+        python3 tests/test_absorption_calculation.py test.db
 
