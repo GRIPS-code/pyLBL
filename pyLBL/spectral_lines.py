@@ -1,4 +1,4 @@
-from numpy import abs, asarray, exp, log, min, pi, power, \
+from numpy import abs, asarray, exp, log, nonzero, pi, power, \
                   searchsorted, sqrt, zeros
 from scipy.special import wofz
 
@@ -86,14 +86,21 @@ def brute_force(wavenumber, center, strength, gamma, alpha, remove_pedestal, cut
     Returns:
         Numpy array of absorption coefficients [cm2].
     """
+    k = zeros(wavenumber.size)
     left = searchsorted(wavenumber, center - cut_off, side="left")
     right = searchsorted(wavenumber, center + cut_off, side="right")
-    k = zeros(wavenumber.size)
-    for i in range(center.size):
-        dv = abs(wavenumber[left[i]:right[i]] - center[i])
-        k[left[i]:right[i]] += strength[i]*voigt_profile(dv, gamma[i], alpha[i])
+    indices = nonzero(left != right)[0]
+    if indices.size == 0:
+        # No lines found in spectral grid.
+        return k
+    i, j = indices[0], indices[-1] + 1
+
+    for x0, x1, transition, line_strength, lorentz, doppler in \
+        zip(left[i:j], right[i:j], center[i:j], strength[i:j], gamma[i:j], alpha[i:j]):
+        dv = abs(wavenumber[x0:x1] - transition)
+        k[x0:x1] += line_strength*voigt_profile(dv, lorentz, doppler)
         if remove_pedestal:
-            k[left[i]:right[i]] -= min(k[left[i]], k[right[i] - 1])
+            k[x0:x1] -= min(k[x0], k[x1 - 1])
     return k
 
 
@@ -154,7 +161,7 @@ class Gas(object):
                  )
 
     def absorption_coefficient(self, temperature, pressure, volume_mixing_ratio, grid,
-                               continuum="mt-ckd"):
+                               remove_pedestal=False):
         """Calculates absorption coefficients for the gas.
 
         Args:
@@ -162,6 +169,7 @@ class Gas(object):
             pressure: Pressure [Pa].
             volume_mixing_ratio: Volume mixing ratio [mol mol-1].
             grid: Wavenumber grid [cm-1].
+            remove_pedestal: Flag for removing the MT-CKD continnum pedestal.
 
         Returns:
             Absorption coefficients [m2].
@@ -182,7 +190,7 @@ class Gas(object):
                    pressure*pa_to_atm,
                    volume_mixing_ratio,
                    grid,
-                   remove_pedestal=continuum == "mt-cdk",
+                   remove_pedestal=remove_pedestal,
                )
 
 

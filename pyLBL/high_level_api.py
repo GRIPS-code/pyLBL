@@ -60,8 +60,12 @@ class Spectroscopy(object):
     Attributes:
         atmosphere: Atmosphere object describing atmospheric conditions.
         cache: Dictionary of MoleculeCache objects.
-        continua_engine: Object exposed by the current molecular cotinuum backed.
+        continua_backend: String name of model to use for the continua.
+        continua_engine: Object exposed by the current molecular continuum backed.
+        cross_section_backend: String name of model to use for the cross sections.
+        cross_section_engine: Object exposed by the current cross sections backed.
         grid: Numpy array describing the spectral grid [cm-1].
+        lines_backend: String name of model to use for lines calculation.
         lines_database: Database object controlling the spectral database.
         lines_engine: Object exposed by the current molecular lines backend.
     """
@@ -70,7 +74,7 @@ class Spectroscopy(object):
                  cross_sections_backend="arts_crossfit"):
         """Initializes object.
 
-        Example::
+        Example:
             mapping = {
                 "play": <name of pressure variable in dataset>,
                 "tlay": <name of temperature variable in dataset>,
@@ -92,8 +96,11 @@ class Spectroscopy(object):
         self.atmosphere = Atmosphere(atmosphere, mapping=mapping)
         self.grid = grid
         self.lines_database = database
+        self.lines_backend = lines_backend
         self.lines_engine = molecular_lines[lines_backend]
+        self.continua_backend = continua_backend
         self.continua_engine = continua[continua_backend]
+        self.cross_sections_backend = cross_sections_backend
         self.cross_sections_engine = cross_sections[cross_sections_backend]
         self.cache = {}
 
@@ -105,7 +112,7 @@ class Spectroscopy(object):
         """
         return self.lines_database.molecules()
 
-    def compute_absorption(self, output_format="all"):
+    def compute_absorption(self, output_format="all", remove_pedestal=None):
         """Computes absorption coefficient [m-1] at specified wavenumbers given temperature,
            pressure, and gas concentrations.
 
@@ -116,6 +123,8 @@ class Spectroscopy(object):
                            "gas" - returns total absorption spectra for all gases
                                    separately.
                            "total" - returns the total spectra.
+            remove_pedestal: Flag that allows the user to not subtract off the
+                             MT-CKD water vapor "pedestal" if desired.
 
         Returns:
             An xarray Dataset of absorption coefficients [m-1].
@@ -136,6 +145,8 @@ class Spectroscopy(object):
         # Calculate the absorption for each molecule at each atmospheric grid point.
         beta = {}
         units = {"units": "m-1"}
+        if remove_pedestal is None:
+            remove_pedestal = self.continua_backend == "mt_ckd"
         for name, mole_fraction in self.atmosphere.gases.items():
             varname = "{}_absorption".format(name)
             beta[varname] = DataArray(zeros(sizes), dims=dims, attrs=units)
@@ -157,7 +168,8 @@ class Spectroscopy(object):
                 # Calculate lines.
                 if data.gas is not None:
                     k = data.gas.absorption_coefficient(t.data.flat[i], p.data.flat[i],
-                                                        mole_fraction.data.flat[i], self.grid)
+                                                        mole_fraction.data.flat[i], self.grid,
+                                                        remove_pedestal=remove_pedestal)
                     indices = tuple(list(j) + [0, slice(None)])
                     beta[varname].values[indices] = n*k[:]
 
