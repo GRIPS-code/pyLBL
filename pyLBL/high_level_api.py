@@ -171,7 +171,7 @@ class Spectroscopy(object):
                                                         mole_fraction.data.flat[i], self.grid,
                                                         remove_pedestal=remove_pedestal)
                     indices = tuple(list(j) + [0, slice(None)])
-                    beta[varname].values[indices] = n*k[:]
+                    beta[varname].values[indices] = n*k[:self.grid.size]
 
                 # Calculate continua.
                 if data.gas_continua is not None:

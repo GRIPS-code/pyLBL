@@ -25,7 +25,7 @@ class Gas(object):
     def absorption_coefficient(self, temperature, pressure, volume_mixing_ratio, grid,
                                remove_pedestal=False, cut_off=25):
         v0 = int(round(grid[0]))
-        vn = int(round(grid[-1]))
+        vn = int(round(grid[-1]) + 1)
         n_per_v = int(round(1./(grid[1] - grid[0])))
         remove_pedestal = 1 if remove_pedestal else 0
         k = zeros((vn - v0)*n_per_v)
