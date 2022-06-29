@@ -33,6 +33,7 @@ class Database(object):
         self.cross_section_directory = None
         self.engine = create_engine(f"sqlite+pysqlite:///{path}", echo=echo, future=True)
         Base.metadata.create_all(self.engine)
+        self.path = path
 
     def create(self, hitran_webapi, molecules="all", tips_webapi=None,
                cross_section_directory=".cross-sections"):

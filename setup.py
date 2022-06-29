@@ -1,4 +1,17 @@
-from setuptools import find_packages, setup
+from glob import glob
+from os.path import join
+from setuptools import Extension, find_packages, setup
+
+
+def c_gas_optics_lib():
+    directory = "pyLBL/c_lib"
+    src = ["{}/{}".format(directory, x) for x in 
+           ["absorption.c", "spectra.c", "spectral_database.c", "voigt.c"]]
+    return Extension("pyLBL.c_lib.libabsorption",
+                     sources=src,
+                     include_dirs=[directory,],
+                     extra_compile_args=[],
+                     extra_link_args=["-lsqlite3", "-lm"])
 
 
 setup(
@@ -32,7 +45,7 @@ setup(
         "sphinx-autopackagesummary",
     ],
     entry_points={
-        "pyLBL" : ["Gas=pyLBL.spectral_lines:Gas",],
+        "pyLBL" : ["Gas=pyLBL.c_lib.gas_optics:Gas",],
 #       "arts": ["Gas=pyLBL.pyarts_frontend:PyArtsGas",],
 #       "grtcode" : ["Gas=pygrt.gas_optics:Gas",],
 #       "pyrad" : ["Gas=pyrad.optics.gas:Gas",
@@ -51,4 +64,5 @@ setup(
         ],
         "arts_crossfit": ["CrossSection=arts_crossfit.cross_section:CrossSection"],
     },
+    ext_modules = [c_gas_optics_lib(),],
 )

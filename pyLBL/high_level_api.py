@@ -36,7 +36,7 @@ class MoleculeCache(object):
     def __init__(self, name, grid, lines_database, lines_engine, continua_engine,
                  cross_sections_engine):
         try:
-            self.gas = lines_engine(*lines_database.gas(name))
+            self.gas = lines_engine(lines_database, name)
         except (AliasNotFoundError, IsotopologuesNotFoundError,
                 TipsDataNotFoundError, TransitionsNotFoundError):
             self.gas = None

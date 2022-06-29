@@ -139,15 +139,22 @@ def line_profile(v, s, q, iso, en, d_air, n_air, n_self, gamma_air, gamma_self,
 
 
 class Gas(object):
-    def __init__(self, formula, mass, transitions, total_partition_function):
+    """API for gas optics calculation.
+
+    Attributes:
+        mass: List of isotopologue masses.
+        q: TotalPartitionFunction object.
+        s: Line strength.
+        transitions: List of TransitionTable objects.
+    """
+    def __init__(self, lines_database, formula):
         """Initializes object.
 
         Args:
+            lines_database: Database object.
             formula: String chemical formula.
-            mass: List of isotopologue masses.
-            transitions: List of TransitionTable objects.
-            total_partition_function: TotalPartitionFunction object.
         """
+        _, mass, transitions, total_partition_function = lines_database.gas(formula)
         self.mass = asarray(mass)
         self.transitions = SpectralLines(transitions)
         self.q = total_partition_function
@@ -161,7 +168,7 @@ class Gas(object):
                  )
 
     def absorption_coefficient(self, temperature, pressure, volume_mixing_ratio, grid,
-                               remove_pedestal=False):
+                               remove_pedestal=False, cut_off=25):
         """Calculates absorption coefficients for the gas.
 
         Args:
