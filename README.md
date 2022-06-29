@@ -9,13 +9,13 @@ steps detailed below, spectra for a point in an atmosphere can be calculated by:
 
 ```python
 from numpy import arange
-from pyLBL import Database, Spectroscopy, WebApi
+from pyLBL import Database, HitranWebApi, Spectroscopy
 from xarray import Dataset
 
 # Download the line paramters and store them in a local sqlite database.
 # You should only have to create the database once.  Subsequent runs can
 # then re-use the already created database.
-webapi = WebApi("<your HITRAN api key>")
+webapi = HitranWebApi("<your HITRAN api key>")
 database = Database("<path to the database file>")
 database.create(webapi)  # This step will take a long time.
 
@@ -70,7 +70,7 @@ pip install .
 
 This command should install the model and the following dependencies:
 
-- matplotlib
+- arts_crossfit (https://github.com/menzel-gfdl/arts-crossfit@make-package),
 - mt_ckd (https://github.com/GRIPS-code/MT_CKD/tree/fortran-90-and-python)
 - netCDF4
 - numpy
@@ -96,7 +96,7 @@ each of these objects are discussed further in the next sections.
 #### Spectral database management
 A `Database` object provides an interface to the current
 [HITRAN](https://hitran.org) database of molecular line parameters.  To create a database
-object of transitions for a specific set of molecules in a specific spectral range, run:
+object of transitions for a specific set of molecules, run:
 
 ```python
 from pyLBL import Database
@@ -107,8 +107,8 @@ database = Database("<path to database>")
 
 # If however you have not already populated the database, the data can be downloaded
 # and inserted by running:
-from pyLBL import WebApi
-webapi = WebApi("<your HITRAN API key>")
+from pyLBL import HitranWebApi
+webapi = HitranWebApi("<your HITRAN API key>")
 database.create(webapi)  # Note that this step will take a long time.
 ```
 
@@ -120,10 +120,11 @@ A `Spectroscopy` object allow users to choose which models are used to calculate
 molecular lines, various molecular continua, and absorption cross sections.  Currently,
 the supported models are as follows:
 
-|component | models                                                                             |
-|--------- | ---------------------------------------------------------------------------------- |
-|lines     | ["pyLBL"](https://github.com/GRIPS-code/pyLBL/blob/new_db/pyLBL/spectral_lines.py) |
-|continua  | ["mt_ckd"](https://github.com/GRIPS-code/MT_CKD/tree/fortran-90-and-python)        |
+|component      | models                                                                             |
+|-------------- | ---------------------------------------------------------------------------------- |
+|lines          | ["pyLBL"](https://github.com/GRIPS-code/pyLBL/blob/new_db/pyLBL/c_lib/gas_optics.py) |
+|continua       | ["mt_ckd"](https://github.com/GRIPS-code/MT_CKD/tree/fortran-90-and-python)        |
+|cross sections | [arts-crossfit](https://github.com/menzel-gfdl/arts-crossfit/tree/make-package)    |
 
 For example, to create a `Spectroscopy` object using the native pure python spectral lines model
 and the MT-CKD continuum, use:
@@ -211,6 +212,9 @@ array, for example:
 from numpy import arange
 grid = arange(1., 5001., 0.1)
 ```
+
+Also as of now, the wavenumber grid resolution should be one divided by an integer.  This
+requirement may be relaxed in the future.
 
 #### Absorption output
 Absorption coefficients can be calculated using the `Spectroscopy` object described
