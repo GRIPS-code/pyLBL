@@ -1,45 +1,52 @@
-from time import time
+def variable(data, units, standard_name):
+    return (["z",], data, {"units": units, "standard_name": standard_name})
 
-from netCDF4 import Dataset
-
-from pyLBL import Atmosphere, Spectroscopy
-
-from default_atmosphere import grid, pressure, temperature, volume_mixing_ratio
-
-
-def main():
-    timings = {}
-    molecules = volume_mixing_ratio.keys()
-
-    tstart = time()
-    spectroscopy = Spectroscopy(molecules, "test.db")
-    timings["create_database"] = time() - tstart
-
-    tstart = time()
-    spectroscopy.load_spectral_inputs()
-    timings["read_database"] = time() - tstart
-
-    atmos = Atmosphere(temperature, pressure, volume_mixing_ratio)
-    tstart = time()
-    absorption_coefficient = spectroscopy.compute_absorption(atmos, grid)
-    timings["compute_absorption"] = time() - tstart
-    with Dataset("results.nc", "w") as dataset:
-        for name, units, data in zip(["pressure", "wavenumber"], ["Pa", "cm-1"],
-                                     [atmos.pressure, grid]):
-            dataset.createDimension(name, data.size)
-            v = dataset.createVariable(name, "f8", (name,))
-            v.setncattr("units", units)
-            v[:] = data[:]
-        for name, data in absorption_coefficient.items():
-            v = dataset.createVariable("{}_absorption_coefficient".format(name), "f8",
-                                       ("pressure", "wavenumber"))
-            v.setncattr("units", "m-1")
-            v[...] = data[...]
-
-    print("Timing results:")
-    for key, value in timings.items():
-        print("{:32s}  -  {}".format(key, value))
+def create_circ_xarray_dataset():
+    from xarray import Dataset
+    temperature = [288.99,]
+    pressure = [98388.,]
+    xh2o = [0.006637074,]
+    xco2 = [0.0003599889,]
+    xo3 = [6.859128e-08,]
+    xn2o = [3.199949e-07,]
+    xco = [1.482969e-07,]
+    xch4 = [1.700002e-06,]
+    xo2 = [0.208996,]
+    xn2 = [0.781,]
+    xcfc11 = [2.783e-10,]
+    xcfc12 = [5.027e-10,]
+    return Dataset(
+        data_vars={
+            "play": variable(pressure, "Pa", "air_pressure"),
+            "tlay": variable(temperature, "K", "air_temperature"),
+            "xh2o": variable(xh2o, "mol mol-1", "mole_fraction_of_water_vapor_in_air"),
+            "xco2": variable(xco2, "mol mol-1", "mole_fraction_of_carbon_dioxide_in_air"),
+            "xo3": variable(xo3, "mol mol-1", "mole_fraction_of_ozone_in_air"),
+            "xn2o": variable(xn2o, "mol mol-1", "mole_fraction_of_nitrous_oxide_in_air"),
+            "xco": variable(xco, "mol mol-1", "mole_fraction_of_carbon_monoxide_in_air"),
+            "xch4": variable(xch4, "mol mol-1", "mole_fraction_of_methane_in_air"),
+            "xo2": variable(xo2, "mol mol-1", "mole_fraction_of_oxygen_in_air"),
+            "xn2": variable(xn2, "mol mol-1", "mole_fraction_of_nitrogen_in_air"),
+            "xcfc11": variable(xcfc11, "mol mol-1", "mole_fraction_of_cfc11_in_air"),
+            "xcfc12": variable(xcfc12, "mol mol-1", "mole_fraction_of_cfc12_in_air"),
+         },
+         coords={
+             "layer": (["z",], [1,])
+         },
+    )
 
 
 if __name__ == "__main__":
-    main()
+    from numpy import arange
+    from pyLBL import Database, Spectroscopy, HitranWebApi
+
+    webapi = HitranWebApi("")
+    database = Database("foo.db")
+    database.create(webapi)
+    dataset = create_circ_xarray_dataset()
+    grid = arange(1., 5000., 1.)
+    s = Spectroscopy(dataset, grid, database)
+    print(s.list_molecules())
+    for i in ["all", "gas", None]:
+        output = s.compute_absorption(output_format=i)
+        output.to_netcdf("out-" + str(i or "total") + ".nc")

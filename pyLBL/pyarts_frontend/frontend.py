@@ -19,7 +19,7 @@ def download_data(cwd=None):
         cwd: Directory to run the download in.
     """
     base_url = "https://arts.mi.uni-hamburg.de/svn/rt/arts-xml-data/trunk"
-    for url in ["spectroscopy/Hitran/",]:
+    for url in ["spectroscopy/Hitran/", ]:
         info("Downloading HITRAN data from {}/{}.".format(base_url, url))
         run(["svn", "co", "-q", "/".join([base_url, url])], stdout=stdout,
             stderr=stderr, check=True, cwd=cwd)
@@ -84,20 +84,20 @@ class PyArtsGas(object):
         Returns:
             Numpy array of absorption coefficients [m2].
         """
-        #Configure spectral grid.
+        # Configure spectral grid.
         self.workspace.f_grid = spectral_grid
         self.workspace.FrequencyFromCGSKayserWavenumber(self.workspace.f_grid,
                                                         self.workspace.f_grid)
         self.workspace.abs_lines_per_speciesCompact()
 
-        #Configure the atmosphere.
+        # Configure the atmosphere.
         self.workspace.NumericSet(self.workspace.rtp_pressure, pressure)
         self.workspace.NumericSet(self.workspace.rtp_temperature, temperature)
         self.workspace.VectorSet(self.workspace.rtp_vmr, asarray([volume_mixing_ratio]))
         self.workspace.Touch(self.workspace.abs_nlte)
         self.workspace.AbsInputFromRteScalars()
 
-        #Calculate the absorption coefficient.
+        # Calculate the absorption coefficient.
         self.workspace.lbl_checkedCalc()
         self.workspace.abs_xsec_agenda_checkedCalc()
         self.workspace.abs_xsec_per_speciesInit()

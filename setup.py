@@ -1,4 +1,17 @@
-from setuptools import find_packages, setup
+from glob import glob
+from os.path import join
+from setuptools import Extension, find_packages, setup
+
+
+def c_gas_optics_lib():
+    directory = "pyLBL/c_lib"
+    src = ["{}/{}".format(directory, x) for x in 
+           ["absorption.c", "spectra.c", "spectral_database.c", "voigt.c"]]
+    return Extension("pyLBL.c_lib.libabsorption",
+                     sources=src,
+                     include_dirs=[directory,],
+                     extra_compile_args=[],
+                     extra_link_args=["-lsqlite3", "-lm"])
 
 
 setup(
@@ -8,7 +21,7 @@ setup(
     author_email="",
     description="Line-by-line absorption calculators.",
     url="",
-    python_requires=">=3.5",
+    python_requires=">=3.6",
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -16,20 +29,31 @@ setup(
         "Operating System :: OS Independent",
     ],
     install_requires=[
+        # Required depenedencies.
+        "netCDF4",
+        "numpy",
+        "scipy",
+        "sqlalchemy",
         "xarray",
-        "pyarts",
-        "pyrad @ git+http://github.com/menzel-gfdl/pylbl@add-continua",
-        "pygrt @ git+http://github.com/menzel-gfdl/pygrt@main",
+        "mt_ckd @ git+http://github.com/GRIPS-code/MT_CKD@fortran-90-and-python",
+        "arts_crossfit @ git+http://github.com/menzel-gfdl/arts-crossfit@make-package",
+
+        # To build documentation.
+        "Sphinx",
+        "sphinxcontrib-apidoc",
+        "sphinxcontrib-napoleon",
+        "sphinx-autopackagesummary",
     ],
     entry_points={
-        "arts": ["Gas=pyLBL.pyarts_frontend:PyArtsGas",],
-        "grtcode" : ["Gas=pygrt.gas_optics:Gas",],
-        "pyrad" : ["Gas=pyrad.optics.gas:Gas",
-                   "CrossSection=pyrad.lbl.hitran.cross_sections:HitranCrossSection",
-                   "CIA=pyrad.lbl.hitran.collision_induced_absorption:HitranCIA",
-                   "H2OSelfContinuum=pyrad.lbl.continua.water_vapor:WaterVaporSelfContinuum",
-                   "H2OForeignContinuum=pyrad.lbl.continua.water_vapor:WaterVaporForeignContinuum",
-                   "O3Continuum=pyrad.lbl.continua.ozone:OzoneContinuum",
+        "pyLBL" : ["Gas=pyLBL.c_lib.gas_optics:Gas",],
+        "mt_ckd": ["CO2Continuum=mt_ckd.carbon_dioxide:CarbonDioxideContinuum",
+                   "H2OForeignContinuum=mt_ckd.water_vapor:WaterVaporForeignContinuum",
+                   "H2OSelfContinuum=mt_ckd.water_vapor:WaterVaporSelfContinuum",
+                   "N2Continuum=mt_ckd.nitrogen:NitrogenContinuum",
+                   "O2Continuum=mt_ckd.oxygen:OxygenContinuum",
+                   "O3Continuum=mt_ckd.ozone:OzoneContinuum",
         ],
+        "arts_crossfit": ["CrossSection=arts_crossfit.cross_section:CrossSection"],
     },
+    ext_modules = [c_gas_optics_lib(),],
 )
