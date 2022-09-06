@@ -1,0 +1,21 @@
+package:
+  name: pylbl
+  version: 0.1
+
+source:
+  git_rev: main
+  git_url: https://github.com/GRIPS-code/pyLBL.git
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - make
+    - pip
+    - python
+    - setuptools
+
+  run:
+    - python
+
+about:
+  home: https://github.com/GRIPS-code/pyLBL.git
