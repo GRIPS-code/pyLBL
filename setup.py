@@ -43,6 +43,9 @@ setup(
         "sphinxcontrib-apidoc",
         "sphinxcontrib-napoleon",
         "sphinx-autopackagesummary",
+
+        # Other
+        "pyarts",
     ],
     entry_points={
         "pyLBL" : ["Gas=pyLBL.c_lib.gas_optics:Gas",],
@@ -54,6 +57,7 @@ setup(
                    "O3Continuum=mt_ckd.ozone:OzoneContinuum",
         ],
         "arts_crossfit": ["CrossSection=arts_crossfit.cross_section:CrossSection"],
+        "arts": ["Gas=pyLBL.pyarts_frontend.frontend:PyArtsGas",],
     },
     ext_modules = [c_gas_optics_lib(),],
 )

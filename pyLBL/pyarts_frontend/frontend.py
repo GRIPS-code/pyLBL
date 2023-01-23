@@ -58,10 +58,10 @@ def configure_workspace(verbosity=0):
 
 
 class PyArtsGas(object):
-    def __init__(self, formula, workspace=None):
+    def __init__(self, lines_database, formula):
         hitran_directory = "{}/".format(load_data())
         self.formula = formula
-        self.workspace = configure_workspace(verbosity=2) if workspace is None else workspace
+        self.workspace = configure_workspace(verbosity=2)
         self.workspace.abs_speciesSet(species=[formula])
         self.workspace.ArrayOfIndexSet(self.workspace.abs_species_active, [0])
         self.workspace.abs_lines_per_speciesReadSpeciesSplitCatalog(basename=hitran_directory)
@@ -71,8 +71,8 @@ class PyArtsGas(object):
                             self.workspace.abs_lines_per_species)
         self.workspace.isotopologue_ratiosInitFromBuiltin()
 
-    def absorption_coefficient(self, temperature, pressure, volume_mixing_ratio,
-                               spectral_grid):
+    def absorption_coefficient(self, temperature, pressure, volume_mixing_ratio, grid,
+                               remove_pedestal=False, cut_off=25):
         """Calculates absorption coefficient.
 
         Args:
