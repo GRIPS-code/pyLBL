@@ -6,70 +6,121 @@ from sys import stderr, stdout
 
 from numpy import asarray
 
-from pyarts.workspace import Workspace
+import pyarts
 
 
 info = getLogger(__name__).info
 
 
-def download_data(cwd=None):
-    """Downloads molecular line data.
-
-    Args:
-        cwd: Directory to run the download in.
+def absorption_line(line):
+    """ Translates a single pyLBL Transition object to ARTS AbsorptionSingleLine
+    
+    Input
+    -----
+        line : Transition
+            A pyLBL transition object
+    
+    Output
+    ------
+        q_key : QuantumIdentifier
+            The pyarts ID of the absorption species
+        ls : AbsorptionSingleLine
+            A single ARTS absorption line
     """
-    base_url = "https://arts.mi.uni-hamburg.de/svn/rt/arts-xml-data/trunk"
-    for url in ["spectroscopy/Hitran/", ]:
-        info("Downloading HITRAN data from {}/{}.".format(base_url, url))
-        run(["svn", "co", "-q", "/".join([base_url, url])], stdout=stdout,
-            stderr=stderr, check=True, cwd=cwd)
+    iso = line.local_iso_id
+    if iso == 11:
+        iso = 'A'
+    elif iso == 12:
+        iso = 'B'
+    iso = str(iso)
+    
+    r = pyarts.arts.hitran.ratio(line.molecule_id, iso)
+    qkey = pyarts.arts.hitran.quantumidentity(line.molecule_id, iso)
+
+    slf = pyarts.arts.LineShapeSingleSpeciesModel(
+        G0=pyarts.arts.LineShapeModelParameters("T1",
+                                                pyarts.arts.convert.kaycm_per_atm2hz_per_pa(
+                                                    line.gamma_self),
+                                                line.n_air),
+        D0=pyarts.arts.LineShapeModelParameters("T0",
+                                                pyarts.arts.convert.kaycm_per_atm2hz_per_pa(
+                                                    line.delta_air)
+                                                ))
+
+    air = pyarts.arts.LineShapeSingleSpeciesModel(
+        G0=pyarts.arts.LineShapeModelParameters("T1",
+                                                pyarts.arts.convert.kaycm_per_atm2hz_per_pa(
+                                                    line.gamma_air),
+                                                line.n_air),
+        D0=pyarts.arts.LineShapeModelParameters("T0",
+                                                pyarts.arts.convert.kaycm_per_atm2hz_per_pa(
+                                                    line.delta_air)
+                                                ))
+
+    sl = pyarts.arts.AbsorptionSingleLine(
+        F0=pyarts.arts.convert.kaycm2freq(line.nu),
+        I0=pyarts.arts.convert.kaycm_per_cmsquared2hz_per_msquared(line.sw / r),
+        E0=pyarts.arts.convert.kaycm2joule(line.elower),
+        lineshape=pyarts.arts.LineShapeModel([slf, air]))
+    
+    return qkey, sl
 
 
-def load_data():
-    """Downloads molecular line data if not found in the package directory.
-
-    Returns:
-        Absolute path of the directory containing molecular line data.
+def absorption_lines(lines):
+    """ Translates a list of pyLBL Transition object to ARTS ArrayOfAbsorptionLines
+    
+    Input
+    -----
+        lines : List[Transition]
+            A list of the database entries for all the lines
+    
+    Output
+    ------
+        lines : ArrayOfAbsorptionLines
+            As pyarts abs_lines
+        
     """
-    pkg_dir = Path(__file__).parent
-    hitran = pkg_dir / "Hitran"
-    if not (hitran.exists() and hitran.is_dir()):
-        download_data(cwd=str(pkg_dir))
-    return str(hitran.absolute())
+    data = {}
 
+    for line in lines:
+        qkey, sl = absorption_line(line)
+        key = str(qkey)
+        if key in data:
+            data[key].append(sl)
+        else:
+            data[key] = [sl]
 
-def configure_workspace(verbosity=0):
-    """Configures the ARTS application.
-
-    Args:
-        verbosity: ARTS verbosity level.
-
-    Returns:
-        A Workspace object.
-    """
-    workspace = Workspace(verbosity=0)
-    for name in ["general", "continua", "agendas"]:
-        workspace.execute_controlfile(join("general", "{}.arts".format(name)))
-    workspace.verbositySetScreen(workspace.verbosity, verbosity)
-    workspace.jacobianOff()
-    workspace.Copy(workspace.abs_xsec_agenda, workspace.abs_xsec_agenda__noCIA)
-    workspace.AtmosphereSet1D()
-    return workspace
-
+    aal = pyarts.arts.ArrayOfAbsorptionLines()
+    for x in data:
+        aal.append(
+            pyarts.arts.AbsorptionLines(
+                selfbroadening=True,
+                bathbroadening=True,
+                cutoff="None",
+                mirroring="None",
+                population="LTE",
+                normalization="SFS",
+                lineshapetype="SplitVP",
+                quantumidentity=x,
+                broadeningspecies=[x.split('-')[0], "Bath"],
+                T0=296,
+                lines=data[x]
+            ))
+    return aal
 
 class PyArtsGas(object):
     def __init__(self, lines_database, formula):
-        hitran_directory = "{}/".format(load_data())
-        self.formula = formula
-        self.workspace = configure_workspace(verbosity=2)
-        self.workspace.abs_speciesSet(species=[formula])
-        self.workspace.ArrayOfIndexSet(self.workspace.abs_species_active, [0])
-        self.workspace.abs_lines_per_speciesReadSpeciesSplitCatalog(basename=hitran_directory)
-        self.workspace.abs_lines_per_speciesSetCutoff(option="ByLine", value=750.e9)
-        self.workspace.ArrayOfArrayOfAbsorptionLinesCreate("abs_lines_per_species_backup")
-        self.workspace.Copy(self.workspace.abs_lines_per_species_backup,
-                            self.workspace.abs_lines_per_species)
-        self.workspace.isotopologue_ratiosInitFromBuiltin()
+        self.ws = pyarts.workspace.Workspace()
+        self.ws.abs_speciesSet(species=[formula])
+        self.ws.abs_lines_per_species = [absorption_lines(lines_database.gas(formula)[2])]
+        
+        self.ws.jacobianOff()
+        self.ws.Touch(self.ws.rtp_nlte)
+        self.ws.Touch(self.ws.rtp_mag)
+        self.ws.Touch(self.ws.rtp_los)
+        self.ws.propmat_clearsky_agendaAuto()
+        self.ws.lbl_checkedCalc()
+        self.ws.stokes_dim = 1
 
     def absorption_coefficient(self, temperature, pressure, volume_mixing_ratio, grid,
                                remove_pedestal=False, cut_off=25):
@@ -79,29 +130,20 @@ class PyArtsGas(object):
             temperature: Temperature [K].
             pressure: Pressure [Pa].
             volume_mixing_ratio: Volume mixing ratio [mol mol-1].
-            spectral_grid: Wavenumber [cm-1].
+            grid: Wavenumber [cm-1].
 
         Returns:
             Numpy array of absorption coefficients [m2].
         """
         # Configure spectral grid.
-        self.workspace.f_grid = spectral_grid
-        self.workspace.FrequencyFromCGSKayserWavenumber(self.workspace.f_grid,
-                                                        self.workspace.f_grid)
-        self.workspace.abs_lines_per_speciesCompact()
+        self.ws.f_grid = pyarts.arts.convert.kaycm2freq(grid)
 
         # Configure the atmosphere.
-        self.workspace.NumericSet(self.workspace.rtp_pressure, pressure)
-        self.workspace.NumericSet(self.workspace.rtp_temperature, temperature)
-        self.workspace.VectorSet(self.workspace.rtp_vmr, asarray([volume_mixing_ratio]))
-        self.workspace.Touch(self.workspace.abs_nlte)
-        self.workspace.AbsInputFromRteScalars()
+        self.ws.rtp_pressure = pressure
+        self.ws.rtp_temperature = temperature
+        self.ws.rtp_vmr = [volume_mixing_ratio]
 
         # Calculate the absorption coefficient.
-        self.workspace.lbl_checkedCalc()
-        self.workspace.abs_xsec_agenda_checkedCalc()
-        self.workspace.abs_xsec_per_speciesInit()
-        self.workspace.abs_xsec_per_speciesAddLines()
-        self.workspace.Copy(self.workspace.abs_lines_per_species,
-                            self.workspace.abs_lines_per_species_backup)
-        return self.workspace.abs_xsec_per_species.value.copy()[0][:, 0]
+        self.ws.AgendaExecute(a=self.ws.propmat_clearsky_agenda)
+        x = pyarts.arts.physics.number_density(pressure, temperature) * volume_mixing_ratio
+        return self.ws.propmat_clearsky.value.data.value.flatten() / x
