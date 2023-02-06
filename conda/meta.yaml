@@ -1,0 +1,30 @@
+package:
+  name: pylbl
+  version: "0.0"
+
+source:
+  git_url: https://github.com/GRIPS-code/pyLBL.git
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - python
+    - setuptools
+
+  run:
+    - python
+    - netCDF4
+    - numpy
+    - pyarts
+    - scipy
+    - sqlalchemy
+    - xarray
+    - Sphinx
+    - sphinxcontrib-apidoc
+    - sphinxcontrib-napoleon
+
+about:
+    home: https://github.com/GRIPS-code/pyLBL
+    license: LGPL-2.1
+    license_file: LICENSE.md
+    summary: Python line-by-line radiative transfer model

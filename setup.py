@@ -42,10 +42,10 @@ setup(
         "Sphinx",
         "sphinxcontrib-apidoc",
         "sphinxcontrib-napoleon",
-        "sphinx-autopackagesummary",
+#       "sphinx-autopackagesummary",
 
         # Other
-        "pyarts",
+#       "pyarts",
     ],
     entry_points={
         "pyLBL" : ["Gas=pyLBL.c_lib.gas_optics:Gas",],
