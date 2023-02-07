@@ -6,10 +6,14 @@ from sys import stderr, stdout
 
 from numpy import asarray
 
-from pyarts.workspace import Workspace
-
 
 info = getLogger(__name__).info
+arts_installed = False
+try:
+    from pyarts.workspace import Workspace
+    arts_installed = True
+except ImportError:
+    info("pyarts is not installed.")
 
 
 def download_data(cwd=None):
@@ -59,6 +63,8 @@ def configure_workspace(verbosity=0):
 
 class PyArtsGas(object):
     def __init__(self, lines_database, formula):
+        if not arts_installed:
+            raise ValueError("pyarts is not installed.")
         hitran_directory = "{}/".format(load_data())
         self.formula = formula
         self.workspace = configure_workspace(verbosity=2)

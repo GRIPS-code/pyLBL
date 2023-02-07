@@ -4,12 +4,12 @@ from pathlib import Path
 from re import match
 from sys import stderr
 
-from arts_crossfit.webapi import download
 from numpy import asarray, reshape
 from sqlalchemy import Column, create_engine, Float, ForeignKey, Integer, select, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 
+from .arts_crossfit.arts_crossfit.webapi import download
 from .tips import TotalPartitionFunction
 from .webapi import NoIsotopologueError, NoMoleculeError, NoTransitionsError, TipsWebApi
 
