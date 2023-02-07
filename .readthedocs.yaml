@@ -3,6 +3,10 @@
 # Required
 version: 2
 
+# Initialize submodules.
+submodules:
+  include: all
+
 #Set the version of Python.
 build:
   os: ubuntu-22.04
@@ -21,4 +25,4 @@ python:
       extra_requirements:
         - docs
     - method: pip
-      path: .
+      path: package
