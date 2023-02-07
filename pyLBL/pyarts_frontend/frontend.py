@@ -85,13 +85,15 @@ class PyArtsGas(object):
             temperature: Temperature [K].
             pressure: Pressure [Pa].
             volume_mixing_ratio: Volume mixing ratio [mol mol-1].
-            spectral_grid: Wavenumber [cm-1].
+            grid: Numpy array defining the spectral grid [cm-1].
+            remove_pedestal: Flag specifying if a pedestal should be subtracted.
+            cut_off: Wavenumber cut-off distance [cm-1] from line centers.
 
         Returns:
             Numpy array of absorption coefficients [m2].
         """
         # Configure spectral grid.
-        self.workspace.f_grid = spectral_grid
+        self.workspace.f_grid = grid
         self.workspace.FrequencyFromCGSKayserWavenumber(self.workspace.f_grid,
                                                         self.workspace.f_grid)
         self.workspace.abs_lines_per_speciesCompact()

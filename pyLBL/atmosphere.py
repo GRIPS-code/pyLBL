@@ -1,6 +1,9 @@
+"""Define how atmospheric inputs are handled."""
+
 from re import match
 
 
+# Map of molecule standard names to chemical formulae.
 _standard_name_to_formula = {
     "carbon_dioxide": "CO2",
     "carbon_monoxide": "CO",
@@ -53,6 +56,9 @@ def _find_variable(dataset, standard_name):
 
     Returns:
         xarray DataArray object.
+
+    Raises:
+        ValueError if standard name is not found in the dataset.
     """
     for var in dataset.data_vars.values():
         try:

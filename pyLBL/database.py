@@ -1,3 +1,5 @@
+"""Manages how the spectral input data is acquired and handled."""
+
 from os import listdir
 from os.path import abspath, join
 from pathlib import Path
@@ -211,6 +213,9 @@ class Database(object):
 
         Returns:
             List of float isotopologue masses.
+
+        Raises:
+            IsotopologuesNotFoundError if no isotopologue is found.
         """
         stmt = select(IsotopologueTable.mass).filter_by(molecule_id=molecule_id)
         result = [x[0] for x in session.execute(stmt).all()]
@@ -229,6 +234,9 @@ class Database(object):
 
         Returns:
             MoleculeTable integer primary key.
+
+        Raises:
+            AliasNotFoundError if no molecule alias is found.
         """
         stmt = select(MoleculeAliasTable.molecule).filter_by(alias=name)
         try:
@@ -245,6 +253,9 @@ class Database(object):
 
         Returns:
             List of TransitionTable objects.
+
+        Raises:
+            TransitionsNotFoundError if no transitions are found.
         """
         stmt = select(TransitionTable).filter_by(molecule_id=molecule_id)
         result = [x[0] for x in session.execute(stmt).all()]
@@ -274,6 +285,7 @@ class Database(object):
             formula: String chemical formula.
             mass: List of float isotopologue masses.
             transitions: List of TransitionTable objects.
+            TotalPartionFunction: TotalPartitionFunction object.
         """
         with Session(self.engine, future=True) as session:
             id = self._molecule_id(session, name)
@@ -291,6 +303,9 @@ class Database(object):
         Returns:
             temperature: Numpy array of temperatures.
             data: Numpy array of data values.
+
+        Raises:
+            TipsDataNotFoundError if no TIPS data is found.
         """
         with Session(self.engine, future=True) as session:
             id = self._molecule_id(session, name)
@@ -308,7 +323,17 @@ class Database(object):
             return temperature, data
 
     def arts_crossfit(self, name):
-        """Queries the database for all parameters needed to run ARTS Crossfit."""
+        """Queries the database for all parameters needed to run ARTS Crossfit.
+
+        Args:
+            name: String molecule alias.
+
+        Returns:
+            Path to the cross section dataset.
+
+        Raises:
+            CrossSectionNotFoundError if no cross sections are found.
+        """
         with Session(self.engine, future=True) as session:
             id = self._molecule_id(session, name)
             stmt = select(ArtsCrossFitTable).filter_by(molecule_id=id)

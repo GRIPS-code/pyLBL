@@ -1,3 +1,5 @@
+"""Provides a simplified API for calculating molecular line spectra."""
+
 from numpy import sum as npsum
 from numpy import unravel_index, zeros
 from xarray import DataArray, Dataset
@@ -30,11 +32,23 @@ class MoleculeCache(object):
     """Helper class that caches molecular data so it can be reused.
 
     Attributes:
+        cross_section: Object controlling the current absorption cross section backend plugin.
         gas: Object controlling the current lines backend plugin.
         gas_continua: List of objects controlling the curret continua backend plugin.
     """
     def __init__(self, name, grid, lines_database, lines_engine, continua_engine,
                  cross_sections_engine):
+        """Initializes the internal cache.
+
+        Args:
+            name: String chemical formula.
+            grid: Numpy array defining the spectral grid [cm-1].
+            lines_database: Database object controlling the spectral database.
+            lines_engine: Gas object to use for the lines calculation.
+            continua_engine: Continuum object to use for the molecular continua.
+            cross_sections_engine: CrossSection object to use for the cross
+                                   section calculation.
+        """
         try:
             self.gas = lines_engine(lines_database, name)
         except (AliasNotFoundError, IsotopologuesNotFoundError,
@@ -63,7 +77,7 @@ class Spectroscopy(object):
         continua_backend: String name of model to use for the continua.
         continua_engine: Object exposed by the current molecular continuum backed.
         cross_section_backend: String name of model to use for the cross sections.
-        cross_section_engine: Object exposed by the current cross sections backed.
+        cross_section_engine: Object exposed by the current cross sections backend.
         grid: Numpy array describing the spectral grid [cm-1].
         lines_backend: String name of model to use for lines calculation.
         lines_database: Database object controlling the spectral database.
@@ -90,8 +104,10 @@ class Spectroscopy(object):
             grid: Wavenumber grid array [cm-1].
             database: Database object to use.
             mapping: Dictionary describing atmospheric dataset variable names.
-            lines_backend: String name of model to use for lines calculation.
-            continua_backend: String name of model to use for molecular continua.
+            lines_backend: String name of the model to use for the lines calculation.
+            continua_backend: String name of the model to use for the molecular continua.
+            cross_sections_backend: String name of the model to use for the cross
+                                    section calculation.
         """
         self.atmosphere = Atmosphere(atmosphere, mapping=mapping)
         self.grid = grid

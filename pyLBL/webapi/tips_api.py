@@ -1,3 +1,5 @@
+"""Defines the API for interacting with the TIPS data stored on the web."""
+
 from re import match
 from urllib.request import urlopen
 
