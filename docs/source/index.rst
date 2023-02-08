@@ -7,10 +7,11 @@ Contents
 --------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    installation
    atmospheric_inputs
+   spectral_inputs
 
 Indices and tables
 ==================

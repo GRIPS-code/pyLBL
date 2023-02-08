@@ -26,13 +26,13 @@ If the user does not pass in the dictionary, the application attempts to "discov
 correct variables in the :code:`Dataset` by examining the variables' CF
 :code:`standard_name` attributes:
 
-============================= =============================== ==============
-Variable                      standard_name Attribute Expected Units
-============================= =============================== ==============
-pressure                      "air_pressure"                  "Pa"
-temperature                   "air_temperature"               "K"
-mole fraction of molecule xxx "mole_fraction_of_xxx_in_air"   "kg/kg"
-============================= =============================== ==============
+============================= ============================= ==============
+Variable                      standard_name Attribute       Expected Units
+============================= ============================= ==============
+pressure                      "air_pressure"                "Pa"
+temperature                   "air_temperature"             "K"
+mole fraction of molecule xxx "mole_fraction_of_xxx_in_air" "mol mol-1"
+============================= ============================= ==============
 
 In either case, if the variables in the :code:`Dataset` do not have the expected units,
 the application will not function properly.
