@@ -57,6 +57,20 @@ Once a local spectral database is created, it can be re-used by simply connectin
 Since the database already exists and is populated, there is no longer a need to create
 a :code:`HitranWebApi` object.
 
+Defining the spectral grid
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Spectral grid input should in wavenumber [cm-1] and be defined as a numpy
+array, for example:
+
+.. code-block:: python
+
+  from numpy import arange
+  grid = arange(1., 5001., 0.1)
+
+Also as of now, the wavenumber grid resolution should be one divided by an integer.  This
+requirement may be relaxed in the future.
+
 Spectral database schema
 ~~~~~~~~~~~~~~~~~~~~~~~~
 

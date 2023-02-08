@@ -12,6 +12,8 @@ Contents
    installation
    atmospheric_inputs
    spectral_inputs
+   api
+   absorption_output
 
 Indices and tables
 ==================
