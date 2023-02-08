@@ -11,7 +11,7 @@ Quickstart - calculating your first spectra
 Let's jump right in with a very simple example.  After running through the installation
 steps detailed below, spectra for a point in an atmosphere can be calculated by:
 
-.. ipython:: python
+.. code-block:: python
 
   from numpy import arange
   from pyLBL import Database, HitranWebApi, Spectroscopy
@@ -70,7 +70,7 @@ Installing using pip
 Make sure that you have the most recent version of :code:`pip`, then run
 the following command in the base directory of the repository:
 
-.. ipython:: python
+.. code-block:: none
   pip install --upgrade pip # If you need to upgrade pip.
   pip install .
 
@@ -103,7 +103,7 @@ A :code:`Database` object provides an interface to the current HITRAN_ database 
 line parameters.  To create a database object of transitions for a specific set of
  molecules, run:
 
-.. ipython:: python
+.. code-block:: python
   from pyLBL import Database
 
   # Make a connection to a database.  If the database already exists and you want to
@@ -137,7 +137,7 @@ cross sections arts-crossfit_
 For example, to create a :code:`Spectroscopy` object using the native pure python spectral
 lines model and the MT-CKD continuum, use:
 
-.. ipython:: python
+.. code-block:: python
   from pyLBL import Spectroscopy
 
   spectroscopy = Spectroscopy(atmosphere, grid, database, mapping=mapping,
@@ -152,7 +152,7 @@ User atmospheric inputs
 Atmospheric inputs should be passed in as an xarray :code:`Dataset` object.  As an example,
 the surface layer of the first CIRC case can be described by:
 
-.. ipython:: python
+.. code-block:: python
   def variable(data, units, standard_name):
       return (["z",], data, {"units": units, "standard_name": standard_name})
 
@@ -190,7 +190,7 @@ As shown in this example, the units of presure must be Pa, temperature must be K
 and mole fraction must be mol mol<sup>-1</sup>.  Users may define a dictionary specifying which
 variables in the dataset should be read:
 
-.. ipython:: python
+.. code-block:: python
   mapping = {
       "play": "p", # name of pressure variable in dataset.
       "tlay": "t", # name of temperature variable in dataset.
@@ -217,7 +217,7 @@ For a full list of valid :code:`standard_name` attributes, go here_
 Spectral grid input should in wavenumber [cm<sup>-1</sup>] and be defined as a numpy
 array, for example:
 
-.. ipython:: python
+.. code-block:: python
   from numpy import arange
   grid = arange(1., 5001., 0.1)
 
@@ -230,7 +230,7 @@ Absorption output
 Absorption coefficients can be calculated using the :code:`Spectroscopy` object described
 above by running:
 
-.. ipython:: python
+.. code-block:: python
   absorption = spectroscopy.compute_absorption(output_format="all")
 
   # Optional: convert dataset to netcdf.
@@ -242,7 +242,7 @@ currently the default), the dataset will return the spectra split up by molecule
 and mechansim (lines, continuum, cross_section). An example viewed in netCDF format
 would look like this:
 
-.. ipython:: python
+.. code-block:: none
   netcdf absorption {
   dimensions:
           wavenumber = 49990 ;
@@ -284,7 +284,7 @@ If the :code:`output_format` argument is instead set to :code:`"gas"`, the spect
 the different mechanims will be summed for each molecule, yielding output that looks
 like this (in netCDF format):
 
-.. ipython:: python
+.. code-block:: none
   netcdf absorption {
   dimensions:
           wavenumber = 49990 ;
@@ -323,7 +323,7 @@ Lastly, if the :code:`output_format` argument is set to any other value, only th
 absorption spectra (summed over all molecules) will be returned.  In netCDF format, the
 resulting dataset will appear like this:
 
-.. ipython:: python
+.. code-block:: none
 
   netcdf absorption {
     dimensions:
@@ -345,4 +345,4 @@ resulting dataset will appear like this:
 .. _here: http://cfconventions.org/Data/cf-standard-names/77/build/cf-standard-name-table.html
 
 .. |docs| image:: https://readthedocs.org/projects/pylbl-1/badge/?version=first-release
-    :target: https://pylbl-1.readthedocs.io/en/first-release
+   :target: https://pylbl-1.readthedocs.io/en/first-release

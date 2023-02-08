@@ -1,16 +1,16 @@
-.. pyLBL documentation master file, created by
-   sphinx-quickstart on Thu Sep 23 11:07:44 2021.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+pyLBL: Python Line-by-line Radiative Transfer Model
+===================================================
 
-Welcome to pyLBL's documentation!
-=================================
+pyLBL is a python package for calculating line-by-line molecular spectra.
+
+Contents
+--------
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
-
+   installation
+   atmospheric_inputs
 
 Indices and tables
 ==================
