@@ -2,6 +2,8 @@
 from os.path import abspath
 import sys
 
+import sphinx_pangeo_theme
+
 sys.path.insert(0, abspath(".."))
 
 # Project information.
@@ -39,7 +41,7 @@ napolean_use_keyword = True
 autosummary_generate = True
 
 # Theme for the HTML pages.
-html_theme = "bizstyle"
+html_theme = "pangeo"
 
 # Paths to static files (like style sheets).
 html_static_path = ["_static"]

@@ -32,6 +32,7 @@ doc_requires = [
     "sphinxcontrib-apidoc",
     "sphinxcontrib-napoleon",
     "sphinx-autopackagesummary",
+    "sphinx_pangeo_theme",
 ]
 
 
