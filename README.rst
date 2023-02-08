@@ -70,7 +70,8 @@ Installing using pip
 Make sure that you have the most recent version of :code:`pip`, then run
 the following command in the base directory of the repository:
 
-.. code-block:: none
+.. code-block:: bash
+
   pip install --upgrade pip # If you need to upgrade pip.
   pip install .
 
@@ -100,10 +101,10 @@ Spectral database management
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A :code:`Database` object provides an interface to the current HITRAN_ database of molecular
-line parameters.  To create a database object of transitions for a specific set of
- molecules, run:
+line parameters.  To create a database object of transitions for a specific set of molecules, run:
 
 .. code-block:: python
+
   from pyLBL import Database
 
   # Make a connection to a database.  If the database already exists and you want to
@@ -138,6 +139,7 @@ For example, to create a :code:`Spectroscopy` object using the native pure pytho
 lines model and the MT-CKD continuum, use:
 
 .. code-block:: python
+
   from pyLBL import Spectroscopy
 
   spectroscopy = Spectroscopy(atmosphere, grid, database, mapping=mapping,
@@ -153,6 +155,7 @@ Atmospheric inputs should be passed in as an xarray :code:`Dataset` object.  As 
 the surface layer of the first CIRC case can be described by:
 
 .. code-block:: python
+
   def variable(data, units, standard_name):
       return (["z",], data, {"units": units, "standard_name": standard_name})
 
@@ -191,6 +194,7 @@ and mole fraction must be mol mol<sup>-1</sup>.  Users may define a dictionary s
 variables in the dataset should be read:
 
 .. code-block:: python
+
   mapping = {
       "play": "p", # name of pressure variable in dataset.
       "tlay": "t", # name of temperature variable in dataset.
@@ -218,6 +222,7 @@ Spectral grid input should in wavenumber [cm<sup>-1</sup>] and be defined as a n
 array, for example:
 
 .. code-block:: python
+
   from numpy import arange
   grid = arange(1., 5001., 0.1)
 
@@ -231,6 +236,7 @@ Absorption coefficients can be calculated using the :code:`Spectroscopy` object 
 above by running:
 
 .. code-block:: python
+
   absorption = spectroscopy.compute_absorption(output_format="all")
 
   # Optional: convert dataset to netcdf.
@@ -243,6 +249,7 @@ and mechansim (lines, continuum, cross_section). An example viewed in netCDF for
 would look like this:
 
 .. code-block:: none
+
   netcdf absorption {
   dimensions:
           wavenumber = 49990 ;
@@ -285,6 +292,7 @@ the different mechanims will be summed for each molecule, yielding output that l
 like this (in netCDF format):
 
 .. code-block:: none
+
   netcdf absorption {
   dimensions:
           wavenumber = 49990 ;

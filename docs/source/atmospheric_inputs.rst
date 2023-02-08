@@ -27,7 +27,7 @@ correct variables in the :code:`Dataset` by examining the variables' CF
 :code:`standard_name` attributes:
 
 ============================= =============================== ==============
-Variable                      :code:`standard_name` Attribute Expected Units
+Variable                      standard_name Attribute Expected Units
 ============================= =============================== ==============
 pressure                      "air_pressure"                  "Pa"
 temperature                   "air_temperature"               "K"

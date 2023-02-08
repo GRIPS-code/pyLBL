@@ -18,7 +18,8 @@ Installing using Pip
 
 From the base of the repository, run:
 
-.. code-block:: none
+.. code-block:: bash
+
   pip install .
 
 Installing from Conda Forge
@@ -31,7 +32,8 @@ Installing from Github
 
 pyLBL can also be obtained from github by running:
 
-.. code-block:: none
+.. code-block:: bash
+
   git clone --recursive https://github.com/GRIPS-code/pyLBL.git
   cd pyLBL
   python3 setup.py install
