@@ -60,7 +60,7 @@ entry_points = {
 
 setup(
     name="pyLBL",
-    version="0.0.0",
+    version="0.0.1",
     description="Line-by-line absorption calculators.",
     url="https://github.com/GRIPS-code/pyLBL",
     author="pyLBL Developers",
