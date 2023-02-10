@@ -1,4 +1,4 @@
-from numpy import arange, log, max
+from numpy import log, max
 from pyLBL import Database, Gas
 import pytest
 

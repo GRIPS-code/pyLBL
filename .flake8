@@ -1,0 +1,18 @@
+[flake8]
+exclude =
+  build,
+  dist,
+  docs,
+  .git,
+  .github,
+  pyLBL/arts_crossfit/coefficients,
+  pyLBL/arts_crossfit/data,
+  pyLBL/arts_crossfit/scripts,
+  pyLBL/arts_crossfit/tests,
+  pyLBL/mt_ckd/docs,
+  pyLBL/mt_ckd/src,
+  pyLBL/mt_ckd/tests,
+  __pycache
+max-complexity = 10
+per-file-ignores =
+  __init__.py: F401,

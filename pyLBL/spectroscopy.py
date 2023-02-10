@@ -1,4 +1,5 @@
 """Provides a simplified API for calculating molecular line spectra."""
+from collections import namedtuple
 
 from numpy import sum as npsum
 from numpy import unravel_index, zeros
@@ -8,7 +9,7 @@ from .atmosphere import Atmosphere
 from .database import AliasNotFoundError, CrossSectionNotFoundError, \
                       IsotopologuesNotFoundError, TipsDataNotFoundError, \
                       TransitionsNotFoundError
-from .low_level_api import continua, cross_sections, molecular_lines
+from .plugins import continua, cross_sections, molecular_lines
 
 
 kb = 1.38064852e-23  # Boltzmann constant [J K-1].
@@ -82,6 +83,7 @@ class Spectroscopy(object):
         lines_backend: String name of model to use for lines calculation.
         lines_database: Database object controlling the spectral database.
         lines_engine: Object exposed by the current molecular lines backend.
+        output: namedtuple object that stores some output dataset metadata.
     """
     def __init__(self, atmosphere, grid, database, mapping=None,
                  lines_backend="pyLBL", continua_backend="mt_ckd",
@@ -120,6 +122,17 @@ class Spectroscopy(object):
         self.cross_sections_engine = cross_sections[cross_sections_backend]
         self.cache = {}
 
+        # Prepare metadata for the ouput xarray Dataset.
+        Output = namedtuple("Output", ["dims", "dim_sizes", "mechanisms", "units"])
+        mechanisms = ["lines", "continuum", "cross_section"]
+        dims = list(self.atmosphere.temperature.dims) + ["mechanism", "wavenumber", ]
+        dim_sizes = \
+            [x for x in self.atmosphere.temperature.sizes.values()] + \
+            [len(mechanisms), self.grid.size]
+        units = {"units": "m-1"}
+        self.output = Output(dims=dims, dim_sizes=dim_sizes, mechanisms=mechanisms,
+                             units=units)
+
     def list_molecules(self):
         """Provides a list of molecules available in the specral lines database.
 
@@ -145,27 +158,15 @@ class Spectroscopy(object):
         Returns:
             An xarray Dataset of absorption coefficients [m-1].
         """
-        p = self.atmosphere.pressure
-        t = self.atmosphere.temperature
-
-        # Initialize the output dataset.
-        output = {
-            "wavenumber": DataArray(self.grid, dims=("wavenumber",), attrs={"units": "cm-1"}),
-        }
-        mechanisms = ["lines", "continuum", "cross_section"]
-        dims = list(t.dims) + ["mechanism", "wavenumber", ]
-        sizes = [x for x in t.sizes.values()] + [len(mechanisms), self.grid.size, ]
-        if output_format == "all":
-            output["mechanism"] = DataArray(mechanisms, dims=("mechanism",))
-
-        # Calculate the absorption for each molecule at each atmospheric grid point.
-        beta = {}
-        units = {"units": "m-1"}
+        pressure = self.atmosphere.pressure.data.flat
+        temperature = self.atmosphere.temperature.data.flat
         if remove_pedestal is None:
             remove_pedestal = self.continua_backend == "mt_ckd"
+        beta = {}
         for name, mole_fraction in self.atmosphere.gases.items():
             varname = "{}_absorption".format(name)
-            beta[varname] = DataArray(zeros(sizes), dims=dims, attrs=units)
+            beta[varname] = DataArray(zeros(self.output.dim_sizes), dims=self.output.dims,
+                                      attrs=self.output.units)
             try:
                 # Grab cached spectral database data.
                 data = self.cache[name]
@@ -175,15 +176,15 @@ class Spectroscopy(object):
                                      self.lines_engine, self.continua_engine,
                                      self.cross_sections_engine)
                 self.cache[name] = data
-            for i in range(t.data.size):
+            for i in range(self.atmosphere.temperature.data.size):
                 vmr = {x: y.data.flat[i] for x, y in self.atmosphere.gases.items()}
-                n = number_density(t.data.flat[i], p.data.flat[i],
+                n = number_density(temperature[i], pressure[i],
                                    mole_fraction.data.flat[i])
-                j = unravel_index(i, t.data.shape)
+                j = unravel_index(i, self.atmosphere.temperature.data.shape)
 
                 # Calculate lines.
                 if data.gas is not None:
-                    k = data.gas.absorption_coefficient(t.data.flat[i], p.data.flat[i],
+                    k = data.gas.absorption_coefficient(temperature[i], pressure[i],
                                                         mole_fraction.data.flat[i], self.grid,
                                                         remove_pedestal=remove_pedestal)
                     indices = tuple(list(j) + [0, slice(None)])
@@ -193,27 +194,42 @@ class Spectroscopy(object):
                 if data.gas_continua is not None:
                     indices = tuple(list(j) + [1, slice(None)])
                     for continuum in data.gas_continua:
-                        k = continuum.spectra(t.data.flat[i], p.data.flat[i], vmr, self.grid)
+                        k = continuum.spectra(temperature[i], pressure[i], vmr, self.grid)
                         beta[varname].values[indices] += k[:]
 
                 # Calculate the cross section.
                 if data.cross_section is not None:
-                    k = data.cross_section.absorption_coefficient(self.grid, t.data.flat[i],
-                                                                  p.data.flat[i])
+                    k = data.cross_section.absorption_coefficient(self.grid, temperature[i],
+                                                                  pressure[i])
                     indices = tuple(list(j) + [2, slice(None)])
                     beta[varname].values[indices] = n*k[:]
+        return self._create_output_dataset(beta, output_format)
 
-        # Combine the output into the desired form.
+    def _create_output_dataset(self, absorption, output_format):
+        """Creates an xarray Dataset with the calculated absorption values.
+
+        Args:
+            absorption: Dictionary containing the absorptoin data.
+            output_format: String describing how the data should be output.
+
+        Returns:
+            xarray Dataset containing the absorption in the desired format.
+        """
+        wavenumber = DataArray(self.grid, dims=("wavenumber",), attrs={"units": "cm-1"})
+        data_vars = {"wavenumber": wavenumber, }
+        dims = list(self.output.dims)
+        units = self.output.units
         if output_format == "all":
-            output.update(beta)
+            data_vars["mechanism"] = DataArray(self.output.mechanisms, dims=("mechanism",))
+            data_vars.update(absorption)
         elif output_format == "gas":
             dims.pop(-2)
-            output.update({x: DataArray(npsum(y.values, axis=-2), dims=dims, attrs=units)
-                           for x, y in beta.items()})
+            data_vars.update({x: DataArray(npsum(y.values, axis=-2), dims=dims, attrs=units)
+                              for x, y in absorption.items()})
         else:
             dims.pop(-2)
             data = [DataArray(npsum(x.values, axis=-2), dims=dims, attrs=units) for x in
-                    beta.values()]
-            output["absorption"] = DataArray(sum([x.values for x in data]),
-                                             dims=dims, attrs=units)
-        return Dataset(output)
+                    absorption.values()]
+            data_vars["absorption"] = DataArray(sum([x.values for x in data]),
+                                                dims=dims, attrs=units)
+        return Dataset(data_vars=data_vars)

@@ -41,14 +41,14 @@ def test_transition_download_no_iso():
     webapi = HitranWebApi(api_key=environ["HITRAN_API_KEY"])
     parameters = ["global_iso_id", "molec_id", "local_iso_id", "nu"]
     with pytest.raises(NoIsotopologueError):
-        lines = webapi.download_transitions([], 0, 3000, parameters)
+        _ = webapi.download_transitions([], 0, 3000, parameters)
 
 
 def test_transition_download_no_lines():
     webapi = HitranWebApi(api_key=environ["HITRAN_API_KEY"])
     parameters = ["global_iso_id", "molec_id", "local_iso_id", "nu"]
     with pytest.raises(NoTransitionsError):
-        lines = webapi.download_transitions([Molecule(1, "H2O"),], 0, 1.e-12, parameters)
+        _ = webapi.download_transitions([Molecule(1, "H2O"),], 0, 1.e-12, parameters)
 
 
 def test_tips_download():
@@ -61,4 +61,4 @@ def test_tips_download():
 
 def test_tips_download_no_molecule():
     with pytest.raises(NoMoleculeError):
-        t, data = TipsWebApi().download("XX")
+        _, _ = TipsWebApi().download("XX")

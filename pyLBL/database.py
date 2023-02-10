@@ -4,7 +4,6 @@ from os import listdir
 from os.path import abspath, join
 from pathlib import Path
 from re import match
-from sys import stderr
 
 from numpy import asarray, reshape
 from sqlalchemy import Column, create_engine, Float, ForeignKey, Integer, select, String
@@ -16,6 +15,116 @@ from .webapi import NoIsotopologueError, NoMoleculeError, NoTransitionsError, Ti
 
 
 Base = declarative_base()
+
+
+def _ingest_molecule_metadata(session, molecule):
+    """Stores the molecule metadata in the database.
+
+    Args:
+        session: Session object.
+        molecule: Struct object.
+    """
+    session.add(
+        MoleculeTable(
+            id=molecule.id,
+            stoichiometric_formula=molecule.stoichiometric_formula,
+            ordinary_formula=molecule.ordinary_formula,
+            common_name=molecule.common_name,
+        )
+    )
+
+
+def _ingest_molecule_aliases(session, molecule):
+    """Stores the molecule aliases in the database.
+
+    Args:
+        session: Session object.
+        molecule: Struct object.
+    """
+    aliases = [x["alias"] for x in molecule.aliases]
+    for alias in aliases:
+        session.add(
+            MoleculeAliasTable(
+                alias=alias,
+                molecule=molecule.id,
+            )
+        )
+
+
+def _ingest_isotopologues(session, molecule, hitran_webapi):
+    """Stores the isotopologues in the database.
+
+    Args:
+        session: Session object.
+        molecule: Struct object.
+        hitran_webapi: HitranWepApi object.
+
+    Returns:
+        List of Struct objects.
+    """
+    isotopologues = hitran_webapi.download_isotopologues(molecule)
+    for isotopologue in isotopologues:
+        session.add(
+            IsotopologueTable(
+                id=isotopologue.id,
+                molecule_id=molecule.id,
+                isoid=isotopologue.isoid,
+                iso_name=isotopologue.iso_name,
+                abundance=isotopologue.abundance,
+                mass=isotopologue.mass,
+            )
+        )
+    return isotopologues
+
+
+def _ingest_transitions(session, molecule, isotopologues, hitran_webapi):
+    """Stores the transitions in the database.
+
+    Args:
+        session: Session object.
+        molecule: Struct object.
+        isotopologues: List of Struct object.
+        hitran_webapi: HitranWepApi object.
+    """
+    parameters = ["global_iso_id", "molec_id", "local_iso_id", "nu", "sw",
+                  "gamma_air", "gamma_self", "n_air", "delta_air", "elower"]
+    transitions = hitran_webapi.download_transitions(isotopologues, 0., 1.e8, parameters)
+    for transition in transitions:
+        session.add(
+            TransitionTable(
+                global_iso_id=transition.global_iso_id,
+                molecule_id=molecule.id,
+                local_iso_id=transition.local_iso_id,
+                nu=transition.nu,
+                sw=transition.sw,
+                gamma_air=transition.gamma_air,
+                gamma_self=transition.gamma_self,
+                n_air=transition.n_air,
+                delta_air=transition.delta_air,
+                elower=transition.elower,
+            )
+        )
+
+
+def _ingest_tips(session, molecule, tips_webapi):
+    """Stores the TIPS data in the database.
+
+    Args:
+        session: Session object.
+        molecule: Struct object.
+        tips_webapi: TipsWepApi object.
+    """
+    temperature, data = tips_webapi.download(molecule.ordinary_formula)
+    for x in range(data.shape[0]):
+        for y in range(data.shape[1]):
+            session.add(
+                TipsTable(
+                    molecule_id=molecule.id,
+                    isotopologue_id=x,
+                    temperature=temperature[y],
+                    data=data[x, y],
+                )
+            )
 
 
 class Database(object):
@@ -55,9 +164,8 @@ class Database(object):
             for i, molecule in enumerate(all_molecules):
 
                 # Support for only using a subset of molecules.
-                if molecules != "all":
-                    if molecule.ordinary_formula not in molecules:
-                        continue
+                if molecules != "all" and molecule.ordinary_formula not in molecules:
+                    continue
 
                 # Write out progress.
                 print("Working on molecule {} / {} ({})".format(
@@ -65,82 +173,32 @@ class Database(object):
                 )
 
                 # Store the molecule metadata.
-                session.add(
-                    MoleculeTable(
-                        id=molecule.id,
-                        stoichiometric_formula=molecule.stoichiometric_formula,
-                        ordinary_formula=molecule.ordinary_formula,
-                        common_name=molecule.common_name,
-                    )
-                )
+                _ingest_molecule_metadata(session, molecule)
 
                 # Store the molecule aliases.
-                aliases = [x["alias"] for x in molecule.aliases]
-                for alias in aliases:
-                    session.add(
-                        MoleculeAliasTable(
-                            alias=alias,
-                            molecule=molecule.id,
-                        )
-                    )
+                _ingest_molecule_aliases(session, molecule)
 
                 # Store isotopologues.
-                isotopologues = hitran_webapi.download_isotopologues(molecule)
-                for isotopologue in isotopologues:
-                    session.add(
-                        IsotopologueTable(
-                            id=isotopologue.id,
-                            molecule_id=molecule.id,
-                            isoid=isotopologue.isoid,
-                            iso_name=isotopologue.iso_name,
-                            abundance=isotopologue.abundance,
-                            mass=isotopologue.mass,
-                        )
-                    )
+                isotopologues = _ingest_isotopologues(session, molecule, hitran_webapi)
 
                 # Store the transitions.
-                parameters = ["global_iso_id", "molec_id", "local_iso_id", "nu", "sw",
-                              "gamma_air", "gamma_self", "n_air", "delta_air", "elower"]
                 try:
-                    transitions = hitran_webapi.download_transitions(isotopologues, 0., 1.e8, parameters)
+                    _ingest_transitions(session, molecule, isotopologues, hitran_webapi)
                 except NoIsotopologueError:
                     print(f"No isotopologues for molecule {molecule.ordinary_formula}.")
                     continue
                 except NoTransitionsError:
                     print(f"No transitions for molecule {molecule.ordinary_formula}.")
                     continue
-                for transition in transitions:
-                    session.add(
-                        TransitionTable(
-                            global_iso_id=transition.global_iso_id,
-                            molecule_id=molecule.id,
-                            local_iso_id=transition.local_iso_id,
-                            nu=transition.nu,
-                            sw=transition.sw,
-                            gamma_air=transition.gamma_air,
-                            gamma_self=transition.gamma_self,
-                            n_air=transition.n_air,
-                            delta_air=transition.delta_air,
-                            elower=transition.elower,
-                        )
-                    )
 
                 # Store the TIPS data.
                 try:
-                    temperature, data = tips_webapi.download(molecule.ordinary_formula)
+                    _ingest_tips(session, molecule, tips_webapi)
                 except NoMoleculeError:
                     print(f"No molecule {molecule.ordinary_formula} found in TIPS database.")
                     continue
-                for x in range(data.shape[0]):
-                    for y in range(data.shape[1]):
-                        session.add(
-                            TipsTable(
-                                molecule_id=molecule.id,
-                                isotopologue_id=x,
-                                temperature=temperature[y],
-                                data=data[x, y],
-                            )
-                        )
+
+                # Commit the updates to the database.
                 session.commit()
 
         # Add in the ARTS Crossfit data files.
@@ -148,47 +206,8 @@ class Database(object):
         Path(self.cross_section_directory).mkdir(parents=True, exist_ok=True)
         download(self.cross_section_directory)
         with Session(self.engine, future=True) as session:
-            for path in listdir(join(self.cross_section_directory, "coefficients")):
-                regex = match(r"([A-Za-z0-9]+).nc", path)
-                if regex:
-                    formula = regex.group(1)
-                    try:
-                        molecule_id = self._molecule_id(session, formula)
-                    except AliasNotFoundError:
-                        # Add molecule to the MoleculeTable.
-                        session.add(
-                            MoleculeTable(
-                                stoichiometric_formula=formula,
-                                ordinary_formula=formula,
-                                common_name=formula,
-                            )
-                        )
-                        session.commit()
-                        # Query for the molecule id.
-                        stmt = select(MoleculeTable.id).filter_by(ordinary_formula=formula)
-                        molecule_id = session.execute(stmt).all()[0][0]
-                        # Add molecule to the MoleculeAliasTable.
-                        session.add(
-                            MoleculeAliasTable(
-                                alias=formula,
-                                molecule=molecule_id,
-                            )
-                        )
-                        session.commit()
-                    # Store path to the cross section data file.
-                    session.add(
-                        ArtsCrossFitTable(
-                            molecule_id=molecule_id,
-                            path=abspath(
-                                     join(
-                                         self.cross_section_directory,
-                                         "coefficients",
-                                         path
-                                     )
-                                 ),
-                        )
-                    )
-                    session.commit()
+            self._ingest_arts_crossfit(session, molecules)
+            session.commit()
 
     def _formula(self, session, molecule_id):
         """Helper function that retrieves a molecule's chemical formula.
@@ -202,6 +221,60 @@ class Database(object):
         """
         stmt = select(MoleculeTable.ordinary_formula).filter_by(id=molecule_id)
         return session.execute(stmt).all()[0][0]
+
+    def _ingest_arts_crossfit(self, session, molecules):
+        """Stores the arts-crossfit data in the database.
+
+        Args:
+            session: Session object.
+            molecules: List of string molecule chemical formulae.
+        """
+        dir_path = join(self.cross_section_directory, "coefficients")
+        for path in listdir(dir_path):
+            # Find chemical formula from file name.
+            regex = match(r"([A-Za-z0-9]+).nc", path)
+            if not regex:
+                continue
+            formula = regex.group(1)
+
+            # Support for only using a subset of molecules.
+            if molecules != "all" and formula not in molecules:
+                continue
+
+            try:
+                # Get the id of the molecule in the database.
+                molecule_id = self._molecule_id(session, formula)
+            except AliasNotFoundError:
+                # The molecule doesn't exist in the database, so add it in.
+                session.add(
+                    MoleculeTable(
+                        stoichiometric_formula=formula,
+                        ordinary_formula=formula,
+                        common_name=formula,
+                    )
+                )
+                session.commit()
+
+                # Query for the molecule id.
+                stmt = select(MoleculeTable.id).filter_by(ordinary_formula=formula)
+                molecule_id = session.execute(stmt).all()[0][0]
+                # Add molecule to the MoleculeAliasTable.
+                session.add(
+                    MoleculeAliasTable(
+                        alias=formula,
+                        molecule=molecule_id,
+                    )
+                )
+                session.commit()
+
+            # Store path to the cross section data file.
+            full_path = abspath(join(dir_path, path))
+            session.add(
+                ArtsCrossFitTable(
+                    molecule_id=molecule_id,
+                    path=full_path,
+                )
+            )
 
     def _mass(self, session, molecule_id):
         """Helper function that retrieves a molecule's isotopologue masses.

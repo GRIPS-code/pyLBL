@@ -29,14 +29,14 @@ def test_spectroscopy_bad_lines_model(atmosphere_dataset, spectral_grid,
                                       downloaded_database):
     database = Database(downloaded_database)
     with pytest.raises(KeyError):
-        s = Spectroscopy(atmosphere_dataset, spectral_grid, database, lines_backend="foo")
+        _ = Spectroscopy(atmosphere_dataset, spectral_grid, database, lines_backend="foo")
 
 
 def test_spectroscopy_bad_continua_model(atmosphere_dataset, spectral_grid,
                                          downloaded_database):
     database = Database(downloaded_database)
     with pytest.raises(KeyError):
-        s = Spectroscopy(atmosphere_dataset, spectral_grid, database,
+        _ = Spectroscopy(atmosphere_dataset, spectral_grid, database,
                          continua_backend="foo")
 
 
@@ -44,5 +44,5 @@ def test_spectroscopy_bad_xsec_model(atmosphere_dataset, spectral_grid,
                                      downloaded_database):
     database = Database(downloaded_database)
     with pytest.raises(KeyError):
-        s = Spectroscopy(atmosphere_dataset, spectral_grid, database,
+        _ = Spectroscopy(atmosphere_dataset, spectral_grid, database,
                          cross_sections_backend="foo")

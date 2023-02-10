@@ -23,8 +23,8 @@ def test_database():
     t, data = database.tips("CO2")
     assert t[0] == 1.
     assert t[-1] == 5000.
-    assert data[0,0] == 1.1722999811172485
-    assert data[-1,-1] == 1018400.0
+    assert data[0, 0] == 1.1722999811172485
+    assert data[-1, -1] == 1018400.0
 
     path = database.arts_crossfit("CFC11")
     assert normpath(path).split(sep)[-3:] == [".cross-sections", "coefficients", "CFC11.nc"]

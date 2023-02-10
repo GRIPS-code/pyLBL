@@ -4,7 +4,6 @@ from pyLBL import TipsWebApi
 from pyLBL.tips import TotalPartitionFunction
 
 
-
 def test_tips():
     t, data = TipsWebApi().download("H2O")
     tips = TotalPartitionFunction("H2O", t, data)

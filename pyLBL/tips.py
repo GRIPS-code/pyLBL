@@ -3,7 +3,7 @@
 from numpy import searchsorted
 
 
-TIPS_REFERENCE_TEMPERATURE = 296. # TIPS reference temperature [K].
+TIPS_REFERENCE_TEMPERATURE = 296.  # TIPS reference temperature [K].
 
 
 class TotalPartitionFunction(object):

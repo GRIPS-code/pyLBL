@@ -139,7 +139,7 @@ class HitranWebApi(object):
             molecules = [molecules, ]
         ids = [x.id for x in molecules]
         return [Struct(**x) for x in self._download_section("isotopologues",
-            Query(molecule_id__in=ids))["content"]["data"]]
+                Query(molecule_id__in=ids))["content"]["data"]]
 
     def download_transitions(self, isotopologues, numin, numax, parameters=None):
         """Downloads transitions for isotopologues available in HITRAN.

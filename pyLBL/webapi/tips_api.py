@@ -11,12 +11,10 @@ class TipsWebApi(object):
 
     Attributes:
         url: String url where data is downloaded from.
-        timestamp: Dictionary of time stamps from when the molecule data was downloaded.
     """
     def __init__(self):
         """Constructs the object."""
         self.url = "http://faculty.uml.edu/Robert_Gamache/Software/temp/Supplementary_file.txt"
-        self.timestamp = {}
 
     def download(self, molecule):
         """Downloads the data from the internet.
@@ -28,7 +26,6 @@ class TipsWebApi(object):
             temperature: Numpy array of temperatures.
             data: Numpy array of data values.
         """
-#       self.timestamp[molecule] = 
         return self._parse_records(self._records(urlopen(self.url), molecule))
 
     @staticmethod

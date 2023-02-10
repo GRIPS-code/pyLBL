@@ -63,12 +63,19 @@ class Gas(object):
         n_per_v = int(round(1./(grid[1] - grid[0])))
         remove_pedestal = 1 if remove_pedestal else 0
         k = zeros((vn - v0)*n_per_v)
-        library.absorption.argtypes = 3*[c_double,] + \
-                                      3*[c_int,] + \
-                                      [ndpointer(c_double, flags="C_CONTIGUOUS"),] + \
-                                      2*[c_char_p,] + \
-                                      2*[c_int,]
+
+        # Define argument types.
+        library.absorption.argtypes = \
+            3*[c_double,] + \
+            3*[c_int,] + \
+            [ndpointer(c_double, flags="C_CONTIGUOUS"),] + \
+            2*[c_char_p,] + \
+            2*[c_int,]
+
+        # Set function to run on return.
         library.absorption.restype = check_return_code
+
+        # Call the c function.
         library.absorption(
             c_double(pressure),
             c_double(temperature),

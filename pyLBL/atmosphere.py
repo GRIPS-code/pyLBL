@@ -36,15 +36,15 @@ class Atmosphere(object):
         """
         self.dataset = dataset
 
-        # Find the pressure and temperature variables.
-        self.pressure = _find_variable(dataset, "air_pressure") if mapping is None else \
-                       dataset[mapping["play"]]
-        self.temperature = _find_variable(dataset, "air_temperature") if mapping is None \
-                           else dataset[mapping["tlay"]]
-
-        # Create a dictionary of avaiable gas mixing ratios.
-        self.gases = {x: y for x, y in _gases(dataset)} if mapping is None else \
-                     {x: dataset[y] for x, y in mapping["mole_fraction"].items()}
+        # Find the pressure, temperature and gax mixing ratio variables.
+        if mapping is None:
+            self.pressure = _find_variable(dataset, "air_pressure")
+            self.temperature = _find_variable(dataset, "air_temperature")
+            self.gases = {x: y for x, y in _gases(dataset)}
+        else:
+            self.pressure = dataset[mapping["play"]]
+            self.temperature = dataset[mapping["tlay"]]
+            self.gases = {x: dataset[y] for x, y in mapping["mole_fraction"].items()}
 
 
 def _find_variable(dataset, standard_name):

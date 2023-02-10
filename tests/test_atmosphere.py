@@ -29,4 +29,4 @@ def test_missing_standard_name(atmosphere_dataset):
     del data_vars["pressure"]
     dataset = Dataset(data_vars=data_vars)
     with pytest.raises(ValueError):
-        atm = Atmosphere(dataset)
+        _ = Atmosphere(dataset)
