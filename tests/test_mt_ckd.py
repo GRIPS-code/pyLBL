@@ -1,10 +1,10 @@
 from numpy import sum
-from pyLBL.mt_ckd.mt_ckd.carbon_dioxide import CarbonDioxideContinuum
-from pyLBL.mt_ckd.mt_ckd.nitrogen import NitrogenContinuum
-from pyLBL.mt_ckd.mt_ckd.oxygen import OxygenContinuum
-from pyLBL.mt_ckd.mt_ckd.ozone import OzoneContinuum
-from pyLBL.mt_ckd.mt_ckd.water_vapor import WaterVaporForeignContinuum
-from pyLBL.mt_ckd.mt_ckd.water_vapor import WaterVaporSelfContinuum
+from pyLBL.mt_ckd.carbon_dioxide import CarbonDioxideContinuum
+from pyLBL.mt_ckd.nitrogen import NitrogenContinuum
+from pyLBL.mt_ckd.oxygen import OxygenContinuum
+from pyLBL.mt_ckd.ozone import OzoneContinuum
+from pyLBL.mt_ckd.water_vapor import WaterVaporForeignContinuum
+from pyLBL.mt_ckd.water_vapor import WaterVaporSelfContinuum
 import pytest
 
 

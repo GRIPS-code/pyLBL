@@ -1,7 +1,7 @@
 from os.path import getsize, join
 
 from numpy import log, max, sum
-from pyLBL.arts_crossfit.arts_crossfit import CrossSection, download
+from pyLBL.arts_crossfit import CrossSection, download
 import pytest
 
 
