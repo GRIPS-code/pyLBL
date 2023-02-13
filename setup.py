@@ -46,14 +46,14 @@ extras_require = {
 entry_points = {
    "pyLBL": ["Gas=pyLBL.c_lib.gas_optics:Gas",],
    "mt_ckd": [
-       "CO2Continuum=pyLBL.mt_ckd.mt_ckd.carbon_dioxide:CarbonDioxideContinuum",
-       "H2OForeignContinuum=pyLBL.mt_ckd.mt_ckd.water_vapor:WaterVaporForeignContinuum",
-       "H2OSelfContinuum=pyLBL.mt_ckd.mt_ckd.water_vapor:WaterVaporSelfContinuum",
-       "N2Continuum=pyLBL.mt_ckd.mt_ckd.nitrogen:NitrogenContinuum",
-       "O2Continuum=pyLBL.mt_ckd.mt_ckd.oxygen:OxygenContinuum",
-       "O3Continuum=pyLBL.mt_ckd.mt_ckd.ozone:OzoneContinuum",
+       "CO2Continuum=pyLBL.mt_ckd.carbon_dioxide:CarbonDioxideContinuum",
+       "H2OForeignContinuum=pyLBL.mt_ckd.water_vapor:WaterVaporForeignContinuum",
+       "H2OSelfContinuum=pyLBL.mt_ckd.water_vapor:WaterVaporSelfContinuum",
+       "N2Continuum=pyLBL.mt_ckd.nitrogen:NitrogenContinuum",
+       "O2Continuum=pyLBL.mt_ckd.oxygen:OxygenContinuum",
+       "O3Continuum=pyLBL.mt_ckd.ozone:OzoneContinuum",
    ],
-   "arts_crossfit": ["CrossSection=pyLBL.arts_crossfit.arts_crossfit.cross_section:CrossSection"],
+   "arts_crossfit": ["CrossSection=pyLBL.arts_crossfit.cross_section:CrossSection"],
    "arts": ["Gas=pyLBL.pyarts_frontend.frontend:PyArtsGas",],
 }
 
@@ -77,8 +77,8 @@ setup(
         "pyLBL.c_lib",
         "pyLBL.webapi",
         "pyLBL.pyarts_frontend",
-        "pyLBL.mt_ckd.mt_ckd",
-        "pyLBL.arts_crossfit.arts_crossfit",
+        "pyLBL.mt_ckd",
+        "pyLBL.arts_crossfit",
     ],
     install_requires=install_requires,
     extras_require=extras_require,
