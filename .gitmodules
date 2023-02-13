@@ -1,8 +1,0 @@
-[submodule "pyLBL/mt_ckd"]
-	path = pyLBL/mt_ckd
-	url = https://github.com/GRIPS-code/MT_CKD.git
-	branch = fortran-90-and-python
-[submodule "pyLBL/arts_crossfit"]
-	path = pyLBL/arts_crossfit
-	url = https://github.com/menzel-gfdl/arts-crossfit.git
-	branch = make-package
