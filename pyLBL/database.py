@@ -9,7 +9,7 @@ from numpy import asarray, reshape
 from sqlalchemy import Column, create_engine, Float, ForeignKey, Integer, select, String
 from sqlalchemy.orm import declarative_base, Session
 
-from .arts_crossfit.arts_crossfit.webapi import download
+from .arts_crossfit.webapi import download
 from .tips import TotalPartitionFunction
 from .webapi import NoIsotopologueError, NoMoleculeError, NoTransitionsError, TipsWebApi
 

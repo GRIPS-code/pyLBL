@@ -15,7 +15,6 @@ def c_gas_optics_lib():
 
 # Required dependencies.
 install_requires = [
-    "matplotlib",
     "netCDF4",
     "numpy",
     "scipy",
