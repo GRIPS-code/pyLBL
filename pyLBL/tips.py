@@ -1,7 +1,9 @@
+"""Controls the TIPS (total internal partition function) calculations."""
+
 from numpy import searchsorted
 
 
-TIPS_REFERENCE_TEMPERATURE = 296.
+TIPS_REFERENCE_TEMPERATURE = 296.  # TIPS reference temperature [K].
 
 
 class TotalPartitionFunction(object):

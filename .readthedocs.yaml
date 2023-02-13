@@ -1,0 +1,28 @@
+# Read the Docs Configuration file.
+
+# Required
+version: 2
+
+# Initialize submodules.
+submodules:
+  include: all
+
+#Set the version of Python.
+build:
+  os: ubuntu-22.04
+  tools:
+    python: "3.8"
+
+# Build documentation in the docs directory with Sphinx
+sphinx:
+  configuration: docs/source/conf.py
+
+# Install the document dependencies and the package.
+python:
+  install:
+    - method: pip
+      path: .
+      extra_requirements:
+        - docs
+    - method: pip
+      path: .

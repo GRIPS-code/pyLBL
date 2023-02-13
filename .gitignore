@@ -1,3 +1,7 @@
+__pycache__
+build/*
 docs/build
 docs/source/api
-__pycache__
+pyLBL.egg-info/*
+tests/*.db
+tests/*.nc

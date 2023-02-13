@@ -1,11 +1,10 @@
-from glob import glob
-from os.path import join
-from setuptools import Extension, find_packages, setup
+from setuptools import Extension, setup
 
 
 def c_gas_optics_lib():
+    """Defines c extension library."""
     directory = "pyLBL/c_lib"
-    src = ["{}/{}".format(directory, x) for x in 
+    src = ["{}/{}".format(directory, x) for x in
            ["absorption.c", "spectra.c", "spectral_database.c", "voigt.c"]]
     return Extension("pyLBL.c_lib.libabsorption",
                      sources=src,
@@ -14,50 +13,75 @@ def c_gas_optics_lib():
                      extra_link_args=["-lsqlite3", "-lm"])
 
 
+# Required dependencies.
+install_requires = [
+    "netCDF4",
+    "numpy",
+    "scipy",
+    "sqlalchemy",
+    "xarray",
+]
+
+
+# Documentation dependencies.
+doc_requires = [
+    "sphinx",
+    "sphinxcontrib-apidoc",
+    "sphinxcontrib-napoleon",
+    "sphinx-autopackagesummary",
+    "sphinx_pangeo_theme",
+]
+
+
+# Optional dependencies.
+extras_require = {
+    "complete": install_requires,
+    "docs": doc_requires,
+    "arts": ["pyarts",]
+}
+
+
+# Entry points.
+entry_points = {
+   "pyLBL": ["Gas=pyLBL.c_lib.gas_optics:Gas",],
+   "mt_ckd": [
+       "CO2Continuum=pyLBL.mt_ckd.carbon_dioxide:CarbonDioxideContinuum",
+       "H2OForeignContinuum=pyLBL.mt_ckd.water_vapor:WaterVaporForeignContinuum",
+       "H2OSelfContinuum=pyLBL.mt_ckd.water_vapor:WaterVaporSelfContinuum",
+       "N2Continuum=pyLBL.mt_ckd.nitrogen:NitrogenContinuum",
+       "O2Continuum=pyLBL.mt_ckd.oxygen:OxygenContinuum",
+       "O3Continuum=pyLBL.mt_ckd.ozone:OzoneContinuum",
+   ],
+   "arts_crossfit": ["CrossSection=pyLBL.arts_crossfit.cross_section:CrossSection"],
+   "arts": ["Gas=pyLBL.pyarts_frontend.frontend:PyArtsGas",],
+}
+
+
 setup(
     name="pyLBL",
-    version="0.0.0",
-    author="R. Menzel, R. Pincus",
-    author_email="",
+    version="0.0.1",
     description="Line-by-line absorption calculators.",
-    url="",
-    python_requires=">=3.6",
-    packages=find_packages(),
+    url="https://github.com/GRIPS-code/pyLBL",
+    author="pyLBL Developers",
+    license="LGPL-2.1",
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: ",
+        "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)",
         "Operating System :: OS Independent",
+        "Development Status :: 3 - Alpha",
     ],
-    install_requires=[
-        # Required depenedencies.
-        "netCDF4",
-        "numpy",
-        "scipy",
-        "sqlalchemy",
-        "xarray",
-        "mt_ckd @ git+http://github.com/GRIPS-code/MT_CKD@fortran-90-and-python",
-        "arts_crossfit @ git+http://github.com/menzel-gfdl/arts-crossfit@make-package",
-
-        # To build documentation.
-        "Sphinx",
-        "sphinxcontrib-apidoc",
-        "sphinxcontrib-napoleon",
-        "sphinx-autopackagesummary",
-
-        # Other
-        "pyarts",
+    python_requires=">=3.6",
+    packages=[
+        "pyLBL",
+        "pyLBL.c_lib",
+        "pyLBL.webapi",
+        "pyLBL.pyarts_frontend",
+        "pyLBL.mt_ckd",
+        "pyLBL.arts_crossfit",
     ],
-    entry_points={
-        "pyLBL" : ["Gas=pyLBL.c_lib.gas_optics:Gas",],
-        "mt_ckd": ["CO2Continuum=mt_ckd.carbon_dioxide:CarbonDioxideContinuum",
-                   "H2OForeignContinuum=mt_ckd.water_vapor:WaterVaporForeignContinuum",
-                   "H2OSelfContinuum=mt_ckd.water_vapor:WaterVaporSelfContinuum",
-                   "N2Continuum=mt_ckd.nitrogen:NitrogenContinuum",
-                   "O2Continuum=mt_ckd.oxygen:OxygenContinuum",
-                   "O3Continuum=mt_ckd.ozone:OzoneContinuum",
-        ],
-        "arts_crossfit": ["CrossSection=arts_crossfit.cross_section:CrossSection"],
-        "arts": ["Gas=pyLBL.pyarts_frontend.frontend:PyArtsGas",],
-    },
-    ext_modules = [c_gas_optics_lib(),],
+    install_requires=install_requires,
+    extras_require=extras_require,
+    entry_points=entry_points,
+    ext_modules=[c_gas_optics_lib(), ],
+    package_data={"": ["*.nc"], },
 )

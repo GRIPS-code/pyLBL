@@ -1,3 +1,5 @@
+"""Defines the API for interacting with the HITRAN database."""
+
 from json import loads
 from urllib.error import HTTPError
 from urllib.request import build_opener, install_opener, ProxyHandler, urlopen
@@ -12,7 +14,7 @@ class HitranWebApi(object):
         cross_section_directory: String directory where cross section files are located.
         host: URL to retrieve the data from.
         parameters: List of Struct objects describing the HITRAN parameters.
-        proxy:
+        proxy: Web proxy (optional).
         timestamp: String time stamp telling when the server was accessed.
         transition_directory: String directory where transitions files are located.
     """
@@ -24,7 +26,7 @@ class HitranWebApi(object):
             api_key: String hitran.org api key.
             api_version: String version of the api to use.
             host: URL to retrieve the data from.
-            proxy:
+            proxy: Currently not used.
         """
         self.api_key = api_key
         self.api_version = api_version
@@ -137,7 +139,7 @@ class HitranWebApi(object):
             molecules = [molecules, ]
         ids = [x.id for x in molecules]
         return [Struct(**x) for x in self._download_section("isotopologues",
-            Query(molecule_id__in=ids))["content"]["data"]]
+                Query(molecule_id__in=ids))["content"]["data"]]
 
     def download_transitions(self, isotopologues, numin, numax, parameters=None):
         """Downloads transitions for isotopologues available in HITRAN.
