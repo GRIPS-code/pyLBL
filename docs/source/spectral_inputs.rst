@@ -26,7 +26,7 @@ and :code:`Database` objects:
 Line data will be downloaded from HITRAN_.  Your HITRAN API key is a unique string provided
 to each account holder by the HITRAN_ website.  You must make an account there.  In order
 to get your api key, create an account, log in, click on the little person icon near the
-top right part of the screen to get to your profile page (or navigate to profle_) and copy
+top right part of the screen to get to your profile page (or navigate to profile_) and copy
 the long string listed as your "API Key".  Note that keeping track of which version of
 the HITRAN data that is being downloaded is still currenlty under development.
 
