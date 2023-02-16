@@ -21,11 +21,17 @@ to create their own conda environment and install the model inside it by running
 
 .. code-block:: bash
 
-  conda create -n env
-  conda activate env
+  # Optional: If the user would like to set up a custom conda environment.
+  conda config --add envs_dirs <location>
+  conda config --add pkgs_dirs <location>
+  conda create -n <name>
+  conda activate <name>
+
   conda install -c conda-forge pyLBL
 
-Here the name of the environment :code:`env` can be anything the user desires.
+Here the :code:`<name>` of the environment can be anything the user desires and the
+:code:`<location>` paths can be in user-writeable locations (if for example users are
+not allowed to write to system directories).
 
 Installing from Github
 ~~~~~~~~~~~~~~~~~~~~~~
