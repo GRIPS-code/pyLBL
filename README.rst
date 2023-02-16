@@ -352,5 +352,5 @@ resulting dataset will appear like this:
 .. _arts-crossfit: https://github.com/menzel-gfdl/arts-crossfit/tree/make-package
 .. _here: http://cfconventions.org/Data/cf-standard-names/77/build/cf-standard-name-table.html
 
-.. |docs| image:: https://readthedocs.org/projects/pylbl-1/badge/?version=first-release
-   :target: https://pylbl-1.readthedocs.io/en/first-release
+.. |docs| image:: https://readthedocs.org/projects/pylbl-1/badge/?version=latest
+   :target: https://pylbl-1.readthedocs.io/en/latest
