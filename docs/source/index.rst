@@ -16,7 +16,7 @@ Contents
    absorption_output
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`
